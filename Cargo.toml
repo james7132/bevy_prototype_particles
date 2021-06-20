@@ -6,7 +6,10 @@ edition = "2018"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
+bevy_app = "0.5"
 bevy_core = "0.5"
 bevy_ecs = "0.5"
 bevy_math = "0.5"
 bevy_tasks = "0.5"
+bevy_render = "0.5"
+rand = "0.8"
