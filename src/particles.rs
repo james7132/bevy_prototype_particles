@@ -1,10 +1,10 @@
-use bevy_core::Time;
-use bevy_ecs::prelude::{Query, Res};
-use bevy_render::color::Color;
-use bevy_math::*;
-use bevy_tasks::ComputeTaskPool;
+use bevy::{
+    prelude::*,
+    render::{color::Color, renderer::RenderResources},
+    tasks::ComputeTaskPool,
+};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Default, Clone)]
 pub struct ParticleParams {
     pub position: Vec3,
     pub rotation: f32,
@@ -22,7 +22,7 @@ pub struct Particle<'a> {
     pub size: &'a f32,
     pub velocity: &'a Vec3,
     pub angular_velocity: &'a f32,
-    pub color: &'a Color,
+    pub color: &'a Vec4,
     pub remaining_lifetime: &'a f32,
 }
 
@@ -33,20 +33,24 @@ pub struct ParticleMut<'a> {
     pub size: &'a mut f32,
     pub velocity: &'a mut Vec3,
     pub angular_velocity: &'a mut f32,
-    pub color: &'a mut Color,
+    pub color: &'a mut Vec4,
     pub remaining_lifetime: &'a mut f32,
 }
 
-#[derive(Clone)]
+#[derive(Clone, RenderResources)]
 /// A container component for a batch of particles.
 pub struct Particles {
     pub(crate) positions: Vec<Vec3>,
     pub(crate) rotations: Vec<f32>,
     pub(crate) sizes: Vec<f32>,
+    #[render_resources(ignore)]
     pub(crate) velocities: Vec<Vec3>,
+    #[render_resources(ignore)]
     pub(crate) angular_velocities: Vec<f32>,
-    pub(crate) colors: Vec<Color>,
+    pub(crate) colors: Vec<Vec4>,
+    #[render_resources(ignore)]
     pub(crate) remaining_lifetimes: Vec<f32>,
+    #[render_resources(ignore)]
     pub(crate) start_lifetimes: Vec<f32>,
 }
 
@@ -93,7 +97,7 @@ impl Particles {
         self.sizes.push(params.size);
         self.velocities.push(params.velocity);
         self.angular_velocities.push(params.angular_velocity);
-        self.colors.push(params.color);
+        self.colors.push(params.color.as_rgba_f32().into());
         self.remaining_lifetimes.push(params.lifetime);
         self.start_lifetimes.push(params.lifetime);
     }

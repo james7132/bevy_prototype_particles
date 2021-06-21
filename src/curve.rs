@@ -1,10 +1,7 @@
 pub enum MinMaxCurve {
     Constant(f32),
     Curve(Curve),
-    RangeCurve {
-        min: Curve,
-        max: Curve,
-    }
+    RangeCurve { min: Curve, max: Curve },
 }
 
 impl MinMaxCurve {
@@ -22,8 +19,7 @@ impl MinMaxCurve {
     }
 }
 
-pub struct Curve {
-}
+pub struct Curve {}
 
 impl Curve {
     pub fn evaluate(&self, time: f32) -> f32 {
