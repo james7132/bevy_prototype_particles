@@ -9,13 +9,16 @@ license = "MIT OR Apache-2.0"
 rand = "0.8"
 
 [dependencies.bevy]
-version = "0.5"
+git = "https://github.com/james7132/bevy"
+branch = "buffer-vec"
 default-features = false
-features = ["render"]
+features = ["render", "bevy_render2"]
 
 [dev-dependencies.bevy]
-version = "0.5"
+git = "https://github.com/james7132/bevy"
+branch = "buffer-vec"
 default-features = true
+features = ["render", "bevy_render2"]
 
 [[example]]
 name = "simple"

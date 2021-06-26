@@ -1,5 +1,6 @@
 use bevy::prelude::*;
 use bevy_prototype_particles::*;
+use rand::Rng;
 
 fn create_scene(
     mut commands: Commands,
@@ -14,7 +15,7 @@ fn create_scene(
         ..Default::default()
     });
     // light
-    commands.spawn_bundle(LightBundle {
+    commands.spawn_bundle(PointLightBundle {
         transform: Transform::from_xyz(4.0, 8.0, 4.0),
         ..Default::default()
     });
@@ -25,13 +26,34 @@ fn create_scene(
     });
 }
 
-fn create_particles(mut commands: Commands) {}
+fn create_particles(mut commands: Commands) {
+    const PARTICLE_SYSTEM_COUNT: usize = 90;
+    const PARTICLE_COUNT: usize = 100000;
+    let mut rng = rand::thread_rng();
+    for _ in 0..PARTICLE_SYSTEM_COUNT {
+        let mut particles = Particles::new(PARTICLE_COUNT);
+        for _ in 0..PARTICLE_COUNT {
+            particles.spawn(ParticleParams {
+               lifetime: rng.gen_range(100.0..1000.0),
+               ..Default::default()
+            });
+        }
+        commands
+            .spawn()
+            .insert(particles);
+    }
+}
+
+fn debug(time: Res<Time>) {
+    bevy::log::info!("{:?} ms", time.delta_seconds_f64() * 1000.0);
+}
 
 fn main() {
-    App::build()
+    App::new()
         .add_plugins(DefaultPlugins)
         .add_plugin(ParticlePlugin)
         .add_startup_system(create_scene.system())
         .add_startup_system(create_particles.system())
+        .add_system(debug.system())
         .run()
 }

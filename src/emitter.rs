@@ -2,7 +2,7 @@ use crate::{
     curve::MinMaxCurve,
     particles::{ParticleParams, Particles},
 };
-use bevy::{ecs::component::Component, prelude::*, tasks::ComputeTaskPool};
+use bevy::{prelude::*, tasks::ComputeTaskPool};
 use rand::Rng;
 use std::{ops::Range, time::Duration};
 

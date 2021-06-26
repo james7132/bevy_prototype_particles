@@ -1,6 +1,7 @@
 use bevy::{
     prelude::*,
-    render::{color::Color, renderer::RenderResources},
+    render::color::Color,
+    render2::render_resource::{BufferUsage, BufferVec},
     tasks::ComputeTaskPool,
 };
 
@@ -17,44 +18,50 @@ pub struct ParticleParams {
 
 #[derive(Debug, Clone)]
 pub struct Particle<'a> {
-    pub position: &'a Vec3,
-    pub rotation: &'a f32,
+    pub position: &'a Vec4,
     pub size: &'a f32,
-    pub velocity: &'a Vec3,
-    pub angular_velocity: &'a f32,
+    pub velocity: &'a Vec4,
     pub color: &'a Vec4,
-    pub remaining_lifetime: &'a f32,
+    pub lifetime: &'a f32,
 }
 
 #[derive(Debug)]
 pub struct ParticleMut<'a> {
-    pub position: &'a mut Vec3,
-    pub rotation: &'a mut f32,
+    pub position: &'a mut Vec4,
     pub size: &'a mut f32,
-    pub velocity: &'a mut Vec3,
-    pub angular_velocity: &'a mut f32,
+    pub velocity: &'a mut Vec4,
     pub color: &'a mut Vec4,
-    pub remaining_lifetime: &'a mut f32,
+    pub lifetime: &'a mut f32,
 }
 
-#[derive(Clone, RenderResources)]
+#[derive(Default, Clone)]
 /// A container component for a batch of particles.
 pub struct Particles {
-    pub(crate) positions: Vec<Vec3>,
-    pub(crate) rotations: Vec<f32>,
+    pub(crate) capacity: usize,
+    // X, Y, Z - world coordinates
+    // W - 1D rotation
+    pub(crate) positions: Vec<Vec4>,
     pub(crate) sizes: Vec<f32>,
-    #[render_resources(ignore)]
-    pub(crate) velocities: Vec<Vec3>,
-    #[render_resources(ignore)]
-    pub(crate) angular_velocities: Vec<f32>,
     pub(crate) colors: Vec<Vec4>,
-    #[render_resources(ignore)]
-    pub(crate) remaining_lifetimes: Vec<f32>,
-    #[render_resources(ignore)]
+    // X, Y, Z - world coordinates
+    // W - 1D rotation
+    pub(crate) velocities: Vec<Vec4>,
+    pub(crate) lifetimes: Vec<f32>,
     pub(crate) start_lifetimes: Vec<f32>,
 }
 
 impl Particles {
+    pub fn new(capacity: usize) -> Self {
+        Self {
+            capacity, 
+            positions: Vec::with_capacity(capacity),
+            sizes: Vec::with_capacity(capacity),
+            colors: Vec::with_capacity(capacity),
+            velocities: Vec::with_capacity(capacity),
+            lifetimes: Vec::with_capacity(capacity),
+            start_lifetimes: Vec::with_capacity(capacity),
+        }
+    }
     /// Gets a read-only reference to a particle.
     ///
     /// # Panics
@@ -62,12 +69,10 @@ impl Particles {
     pub fn get<'a>(&'a self, idx: usize) -> Particle<'a> {
         Particle {
             position: &self.positions[idx],
-            rotation: &self.rotations[idx],
             size: &self.sizes[idx],
             velocity: &self.velocities[idx],
-            angular_velocity: &self.angular_velocities[idx],
             color: &self.colors[idx],
-            remaining_lifetime: &self.remaining_lifetimes[idx],
+            lifetime: &self.lifetimes[idx],
         }
     }
 
@@ -78,12 +83,10 @@ impl Particles {
     pub fn get_mut<'a>(&'a mut self, idx: usize) -> ParticleMut<'a> {
         ParticleMut {
             position: &mut self.positions[idx],
-            rotation: &mut self.rotations[idx],
             size: &mut self.sizes[idx],
             velocity: &mut self.velocities[idx],
-            angular_velocity: &mut self.angular_velocities[idx],
             color: &mut self.colors[idx],
-            remaining_lifetime: &mut self.remaining_lifetimes[idx],
+            lifetime: &mut self.lifetimes[idx],
         }
     }
 
@@ -92,13 +95,11 @@ impl Particles {
     /// If spawning multiple at the same time, use `spawn_batch` instead.
     #[inline(always)]
     pub fn spawn(&mut self, params: ParticleParams) {
-        self.positions.push(params.position);
-        self.rotations.push(params.rotation);
+        self.positions.push(Vec4::from((params.position, params.rotation)));
         self.sizes.push(params.size);
-        self.velocities.push(params.velocity);
-        self.angular_velocities.push(params.angular_velocity);
+        self.velocities.push(Vec4::from((params.velocity, params.angular_velocity)));
         self.colors.push(params.color.as_rgba_f32().into());
-        self.remaining_lifetimes.push(params.lifetime);
+        self.lifetimes.push(0.0);
         self.start_lifetimes.push(params.lifetime);
     }
 
@@ -115,13 +116,25 @@ impl Particles {
     pub fn merge(&mut self, batch: impl Into<Particles>) {
         let batch = batch.into();
         self.positions.extend(batch.positions);
-        self.rotations.extend(batch.rotations);
         self.sizes.extend(batch.sizes);
         self.velocities.extend(batch.velocities);
-        self.angular_velocities.extend(batch.angular_velocities);
-        self.remaining_lifetimes.extend(batch.remaining_lifetimes);
+        self.lifetimes.extend(batch.lifetimes);
         self.colors.extend(batch.colors);
         self.start_lifetimes.extend(batch.start_lifetimes);
+    }
+
+    pub fn iter<'a>(&'a self) -> ParticleIter<'a> {
+        ParticleIter {
+            idx: 0,
+            particles: self
+        }
+    }
+
+    pub fn iter_mut<'a>(&'a mut self) -> ParticleIterMut<'a> {
+        ParticleIterMut {
+            idx: 0,
+            particles: self
+        }
     }
 
     pub fn len(&self) -> usize {
@@ -134,22 +147,18 @@ impl Particles {
 
     pub fn reserve(&mut self, capacity: usize) {
         self.positions.reserve(capacity);
-        self.rotations.reserve(capacity);
         self.sizes.reserve(capacity);
         self.velocities.reserve(capacity);
-        self.angular_velocities.reserve(capacity);
-        self.remaining_lifetimes.reserve(capacity);
+        self.lifetimes.reserve(capacity);
         self.colors.reserve(capacity);
         self.start_lifetimes.reserve(capacity);
     }
 
     pub fn clear(&mut self) {
         self.positions.clear();
-        self.rotations.clear();
         self.sizes.clear();
         self.velocities.clear();
-        self.angular_velocities.clear();
-        self.remaining_lifetimes.clear();
+        self.lifetimes.clear();
         self.colors.clear();
         self.start_lifetimes.clear();
     }
@@ -163,43 +172,19 @@ impl Particles {
     }
 
     #[inline(always)]
-    fn advance_particles(&mut self, delta_time: f32) {
-        for lifetime in self.remaining_lifetimes.iter_mut() {
-            *lifetime -= delta_time;
-        }
-    }
-
-    #[inline(always)]
-    fn move_particles(&mut self, delta_time: f32) {
-        for (position, velocity) in self.positions.iter_mut().zip(self.velocities.iter()) {
-            *position += *velocity * delta_time;
-        }
-    }
-
-    #[inline(always)]
-    fn rotate_particles(&mut self, delta_time: f32) {
-        for (rotation, angular_velocity) in self
-            .rotations
-            .iter_mut()
-            .zip(self.angular_velocities.iter())
-        {
-            *rotation += *angular_velocity * delta_time;
-        }
-    }
-
-    #[inline(always)]
-    fn kill_particles(&mut self) {
+    pub fn advance_particles(&mut self, delta_time: f32) {
         let mut active_count = self.len();
-        let mut current_idx = 0;
-        while current_idx < active_count {
-            if self.remaining_lifetimes[current_idx] > 0.0 {
-                self.kill(current_idx, active_count - 1);
+        let mut idx = 0;
+        while idx < active_count {
+            self.positions[idx] += self.velocities[idx] * delta_time;
+            self.lifetimes[idx] += delta_time;
+            if self.lifetimes[idx] >= self.start_lifetimes[idx] {
+                self.kill(idx, active_count - 1);
                 active_count -= 1;
             } else {
-                current_idx += 1;
+                idx += 1;
             }
         }
-        debug_assert!(active_count <= self.len());
         if active_count < self.len() {
             self.flush(active_count);
         }
@@ -208,11 +193,9 @@ impl Particles {
     #[inline(always)]
     fn kill(&mut self, idx: usize, end: usize) {
         self.positions.swap(idx, end);
-        self.rotations.swap(idx, end);
         self.sizes.swap(idx, end);
         self.velocities.swap(idx, end);
-        self.angular_velocities.swap(idx, end);
-        self.remaining_lifetimes.swap(idx, end);
+        self.lifetimes.swap(idx, end);
         self.colors.swap(idx, end);
         self.start_lifetimes.swap(idx, end);
     }
@@ -220,12 +203,10 @@ impl Particles {
     #[inline(always)]
     fn flush(&mut self, len: usize) {
         self.positions.truncate(len);
-        self.rotations.swap_remove(len);
-        self.sizes.swap_remove(len);
-        self.velocities.swap_remove(len);
-        self.angular_velocities.swap_remove(len);
-        self.remaining_lifetimes.swap_remove(len);
-        self.start_lifetimes.swap_remove(len);
+        self.sizes.truncate(len);
+        self.velocities.truncate(len);
+        self.lifetimes.truncate(len);
+        self.start_lifetimes.truncate(len);
     }
 }
 
@@ -264,13 +245,11 @@ impl<'a> Iterator for ParticleIterMut<'a> {
                 let particles = &mut self.particles;
                 let particle = ParticleMut {
                     position: &mut *particles.positions.as_mut_ptr().add(self.idx),
-                    rotation: &mut *particles.rotations.as_mut_ptr().add(self.idx),
                     size: &mut *particles.sizes.as_mut_ptr().add(self.idx),
                     velocity: &mut *particles.velocities.as_mut_ptr().add(self.idx),
-                    angular_velocity: &mut *particles.angular_velocities.as_mut_ptr().add(self.idx),
                     color: &mut *particles.colors.as_mut_ptr().add(self.idx),
-                    remaining_lifetime: &mut *particles
-                        .remaining_lifetimes
+                    lifetime: &mut *particles
+                        .lifetimes
                         .as_mut_ptr()
                         .add(self.idx),
                 };
@@ -289,8 +268,5 @@ pub fn update_particles(
     let delta_time = time.delta_seconds_f64() as f32;
     particles.par_for_each_mut(&compute_task_pool, 8, |mut particles| {
         particles.advance_particles(delta_time);
-        particles.kill_particles();
-        particles.move_particles(delta_time);
-        particles.rotate_particles(delta_time);
     });
 }

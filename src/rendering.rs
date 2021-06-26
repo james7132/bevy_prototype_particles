@@ -2,7 +2,7 @@
 pub fn render_particles(
     mut draw_context: DrawContext,
     msaa: Res<Msaa>,
-    mut query: Query<(&Draw, &RenderPipelines, &Visible)>
+    mut query: Query<(&Draw, &RenderPipelines, &Visible), With<Particles>>
 ) {
     query.for_each_mut(|(mut draw, mut render_pipelines, particles, visible)| {
         if !visible.is_visible {
@@ -21,9 +21,46 @@ pub fn render_particles(
                     .iter_dynamic_bindings()
                     .map(|name| name.to_string())
                     .collect::<HashSet<String>>(),
-                vertex_buffer_layout: mesh.get_vertex_buffer_layout(),
+                vertex_buffer_layout: VertexBufferLayout {
+                    name: Default::default(),
+                    stride: mem::size_of::<[f32; 10]>() as u64,
+                    step_mode: InputStepMode::Instance,
+                    attributes: vec![
+                        VertexAttribute {
+                            name: From::from("Vertex_Position"),
+                            format: VertexFormat::Float3,
+                            offset: 0,
+                            shader_location: 0,
+                        },
+                        VertexAttribute {
+                            name: From::from("Vertex_Uv"),
+                            format: VertexFormat::Float2,
+                            offset: mem::size_of::<[f32; 3]>() as u64,
+                            shader_location: 1,
+                        },
+                        VertexAttribute {
+                            name: From::from("Particles_position"),
+                            format: VertexFormat::Float3,
+                            offset: mem::size_of::<[f32; 5]>() as u64,
+                            shader_location: 2,
+                        },
+                        VertexAttribute {
+                            name: From::from("Particles_rotation"),
+                            format: VertexFormat::Float,
+                            offset: mem::size_of::<[f32; 8]>() as u64,
+                            shader_location: 3,
+                        },
+                        VertexAttribute {
+                            name: From::from("Particles_size"),
+                            format: VertexFormat::Float,
+                            offset: mem::size_of::<[f32; 9]>() as u64,
+                            shader_location: 4,
+                        }
+                    ],
+                },
             },
         );
+
         render_pipeline.dynamic_bindings_generation =
             render_pipelines.bindings.dynamic_bindings_generation();
 
