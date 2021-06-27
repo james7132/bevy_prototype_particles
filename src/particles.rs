@@ -53,7 +53,7 @@ pub struct Particles {
 impl Particles {
     pub fn new(capacity: usize) -> Self {
         Self {
-            capacity, 
+            capacity,
             positions: Vec::with_capacity(capacity),
             sizes: Vec::with_capacity(capacity),
             colors: Vec::with_capacity(capacity),
@@ -95,9 +95,11 @@ impl Particles {
     /// If spawning multiple at the same time, use `spawn_batch` instead.
     #[inline(always)]
     pub fn spawn(&mut self, params: ParticleParams) {
-        self.positions.push(Vec4::from((params.position, params.rotation)));
+        self.positions
+            .push(Vec4::from((params.position, params.rotation)));
         self.sizes.push(params.size);
-        self.velocities.push(Vec4::from((params.velocity, params.angular_velocity)));
+        self.velocities
+            .push(Vec4::from((params.velocity, params.angular_velocity)));
         self.colors.push(params.color.as_rgba_f32().into());
         self.lifetimes.push(0.0);
         self.start_lifetimes.push(params.lifetime);
@@ -126,14 +128,14 @@ impl Particles {
     pub fn iter<'a>(&'a self) -> ParticleIter<'a> {
         ParticleIter {
             idx: 0,
-            particles: self
+            particles: self,
         }
     }
 
     pub fn iter_mut<'a>(&'a mut self) -> ParticleIterMut<'a> {
         ParticleIterMut {
             idx: 0,
-            particles: self
+            particles: self,
         }
     }
 
@@ -248,10 +250,7 @@ impl<'a> Iterator for ParticleIterMut<'a> {
                     size: &mut *particles.sizes.as_mut_ptr().add(self.idx),
                     velocity: &mut *particles.velocities.as_mut_ptr().add(self.idx),
                     color: &mut *particles.colors.as_mut_ptr().add(self.idx),
-                    lifetime: &mut *particles
-                        .lifetimes
-                        .as_mut_ptr()
-                        .add(self.idx),
+                    lifetime: &mut *particles.lifetimes.as_mut_ptr().add(self.idx),
                 };
                 self.idx += 1;
                 Some(particle)

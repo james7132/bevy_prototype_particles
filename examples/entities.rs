@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bevy::tasks::ComputeTaskPool;
 use bevy_prototype_particles::*;
 use rand::Rng;
 
@@ -26,20 +27,38 @@ fn create_scene(
     });
 }
 
+struct Particle {
+    position: Vec4,
+    velocity: Vec4,
+    lifetime: f32,
+}
+
 fn create_particles(mut commands: Commands) {
     const PARTICLE_SYSTEM_COUNT: usize = 90;
     const PARTICLE_COUNT: usize = 10000;
     let mut rng = rand::thread_rng();
     for _ in 0..PARTICLE_SYSTEM_COUNT {
-        let mut particles = Particles::new(PARTICLE_COUNT);
         for _ in 0..PARTICLE_COUNT {
-            particles.spawn(ParticleParams {
+            commands.spawn().insert(Particle {
+                position: Vec4::ZERO,
+                velocity: Vec4::ZERO,
                 lifetime: rng.gen_range(100.0..1000.0),
-                ..Default::default()
             });
         }
-        commands.spawn().insert(particles);
     }
+}
+
+fn update_particles(
+    time: Res<Time>,
+    compute_task_pool: Res<ComputeTaskPool>,
+    mut particles: Query<(Entity, &mut Particle)>,
+) {
+    let dt = time.delta_seconds_f64() as f32;
+    particles.par_for_each_mut(&compute_task_pool, 32, move |(entity, mut particle)| {
+        let velocity = particle.velocity * dt;
+        particle.position += velocity;
+        particle.lifetime -= dt;
+    });
 }
 
 fn debug(time: Res<Time>) {
@@ -49,9 +68,9 @@ fn debug(time: Res<Time>) {
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
-        .add_plugin(ParticlePlugin)
         .add_startup_system(create_scene.system())
         .add_startup_system(create_particles.system())
         .add_system(debug.system())
+        .add_system(update_particles.system())
         .run()
 }
