@@ -22,7 +22,7 @@ pub struct Particle<'a> {
     pub size: &'a f32,
     pub velocity: &'a Vec4,
     pub color: &'a Vec4,
-    pub lifetime: &'a f32,
+    // pub lifetime: &'a f32,
 }
 
 #[derive(Debug)]
@@ -31,37 +31,40 @@ pub struct ParticleMut<'a> {
     pub size: &'a mut f32,
     pub velocity: &'a mut Vec4,
     pub color: &'a mut Vec4,
-    pub lifetime: &'a mut f32,
+    // pub lifetime: &'a mut f32,
 }
 
 #[derive(Default, Clone)]
 /// A container component for a batch of particles.
 pub struct Particles {
     pub(crate) capacity: usize,
+    pub(crate) lifetime: f32,
     // X, Y, Z - world coordinates
     // W - 1D rotation
     pub(crate) positions: Vec<Vec4>,
-    pub(crate) sizes: Vec<f32>,
     pub(crate) colors: Vec<Vec4>,
     // X, Y, Z - world coordinates
     // W - 1D rotation
     pub(crate) velocities: Vec<Vec4>,
-    pub(crate) lifetimes: Vec<f32>,
-    pub(crate) start_lifetimes: Vec<f32>,
+    pub(crate) sizes: Vec<f32>,
+    pub(crate) starts: Vec<f32>,
+    pub(crate) expirations: Vec<f32>,
 }
 
 impl Particles {
     pub fn new(capacity: usize) -> Self {
         Self {
             capacity,
+            lifetime: 0.0,
             positions: Vec::with_capacity(capacity),
-            sizes: Vec::with_capacity(capacity),
             colors: Vec::with_capacity(capacity),
             velocities: Vec::with_capacity(capacity),
-            lifetimes: Vec::with_capacity(capacity),
-            start_lifetimes: Vec::with_capacity(capacity),
+            sizes: Vec::with_capacity(capacity),
+            starts: Vec::with_capacity(capacity),
+            expirations: Vec::with_capacity(capacity),
         }
     }
+
     /// Gets a read-only reference to a particle.
     ///
     /// # Panics
@@ -69,10 +72,10 @@ impl Particles {
     pub fn get<'a>(&'a self, idx: usize) -> Particle<'a> {
         Particle {
             position: &self.positions[idx],
-            size: &self.sizes[idx],
             velocity: &self.velocities[idx],
             color: &self.colors[idx],
-            lifetime: &self.lifetimes[idx],
+            size: &self.sizes[idx],
+            // lifetime: &self.lifetimes[idx],
         }
     }
 
@@ -86,7 +89,6 @@ impl Particles {
             size: &mut self.sizes[idx],
             velocity: &mut self.velocities[idx],
             color: &mut self.colors[idx],
-            lifetime: &mut self.lifetimes[idx],
         }
     }
 
@@ -97,12 +99,12 @@ impl Particles {
     pub fn spawn(&mut self, params: ParticleParams) {
         self.positions
             .push(Vec4::from((params.position, params.rotation)));
-        self.sizes.push(params.size);
         self.velocities
             .push(Vec4::from((params.velocity, params.angular_velocity)));
         self.colors.push(params.color.as_rgba_f32().into());
-        self.lifetimes.push(0.0);
-        self.start_lifetimes.push(params.lifetime);
+        self.sizes.push(params.size);
+        self.starts.push(self.lifetime);
+        self.expirations.push(self.lifetime + params.lifetime);
     }
 
     /// Spawns a batch of particles with the given parameters.
@@ -118,11 +120,11 @@ impl Particles {
     pub fn merge(&mut self, batch: impl Into<Particles>) {
         let batch = batch.into();
         self.positions.extend(batch.positions);
-        self.sizes.extend(batch.sizes);
         self.velocities.extend(batch.velocities);
-        self.lifetimes.extend(batch.lifetimes);
         self.colors.extend(batch.colors);
-        self.start_lifetimes.extend(batch.start_lifetimes);
+        self.sizes.extend(batch.sizes);
+        self.starts.extend(batch.starts);
+        self.expirations.extend(batch.expirations);
     }
 
     pub fn iter<'a>(&'a self) -> ParticleIter<'a> {
@@ -151,64 +153,79 @@ impl Particles {
         self.positions.reserve(capacity);
         self.sizes.reserve(capacity);
         self.velocities.reserve(capacity);
-        self.lifetimes.reserve(capacity);
         self.colors.reserve(capacity);
-        self.start_lifetimes.reserve(capacity);
+        self.starts.reserve(capacity);
+        self.expirations.reserve(capacity);
     }
 
     pub fn clear(&mut self) {
+        self.lifetime = 0.0;
         self.positions.clear();
         self.sizes.clear();
         self.velocities.clear();
-        self.lifetimes.clear();
         self.colors.clear();
-        self.start_lifetimes.clear();
+        self.starts.clear();
+        self.expirations.clear();
     }
 
     /// Gets a ratio of how much of a particle's lifetime has passed. Will be 0.0 when the
     /// particle is newly spawned, and 1.0 or greater when the particle is about to be killed.
     pub fn lifetime_ratio(&self, idx: usize) -> f32 {
-        let start_lifetime = self.start_lifetimes[idx];
-        let lifetime = self.start_lifetimes[idx];
-        (start_lifetime - lifetime) / start_lifetime
+        let start = self.starts[idx];
+        let end = self.expirations[idx];
+        (self.lifetime - start) / (end - start)
     }
 
     #[inline(always)]
     pub fn advance_particles(&mut self, delta_time: f32) {
-        let mut active_count = self.len();
+        self.lifetime += delta_time;
+
+        if self.len() <= 0 {
+            return;
+        }
+
+        let mut last = self.len() - 1;
         let mut idx = 0;
-        while idx < active_count {
-            self.positions[idx] += self.velocities[idx] * delta_time;
-            self.lifetimes[idx] += delta_time;
-            if self.lifetimes[idx] >= self.start_lifetimes[idx] {
-                self.kill(idx, active_count - 1);
-                active_count -= 1;
+        unsafe {
+            while idx <= last && last < self.len() {
+                // SAFE: Both idx and last are always valid indicies
+                if *self.expirations.get_unchecked(idx) <= self.lifetime {
+                    self.kill(idx, last);
+                    last -= 1;
+                } else {
+                    idx += 1;
+                }
+            }
+            // SAFE: the set length is always smaller than the original length or underflowed.
+            if last >= self.len() {
+                self.flush(0);
             } else {
-                idx += 1;
+                self.flush(last + 1);
             }
         }
-        if active_count < self.len() {
-            self.flush(active_count);
+
+        for (pos, velocity) in self.positions.iter_mut().zip(self.velocities.iter_mut()) {
+            *pos += *velocity * delta_time;
         }
     }
 
     #[inline(always)]
-    fn kill(&mut self, idx: usize, end: usize) {
-        self.positions.swap(idx, end);
-        self.sizes.swap(idx, end);
-        self.velocities.swap(idx, end);
-        self.lifetimes.swap(idx, end);
-        self.colors.swap(idx, end);
-        self.start_lifetimes.swap(idx, end);
+    unsafe fn kill(&mut self, idx: usize, end: usize) {
+        debug_assert!(idx <= end);
+        *self.positions.get_unchecked_mut(idx) = *self.positions.get_unchecked(end);
+        *self.velocities.get_unchecked_mut(idx) = *self.velocities.get_unchecked(end);
+        *self.colors.get_unchecked_mut(idx) = *self.colors.get_unchecked(end);
+        *self.sizes.get_unchecked_mut(idx) = *self.sizes.get_unchecked(end);
+        *self.expirations.get_unchecked_mut(idx) = *self.expirations.get_unchecked(end);
     }
 
     #[inline(always)]
-    fn flush(&mut self, len: usize) {
-        self.positions.truncate(len);
-        self.sizes.truncate(len);
-        self.velocities.truncate(len);
-        self.lifetimes.truncate(len);
-        self.start_lifetimes.truncate(len);
+    unsafe fn flush(&mut self, len: usize) {
+        self.positions.set_len(len);
+        self.velocities.set_len(len);
+        self.colors.set_len(len);
+        self.sizes.set_len(len);
+        self.expirations.set_len(len);
     }
 }
 
@@ -250,7 +267,6 @@ impl<'a> Iterator for ParticleIterMut<'a> {
                     size: &mut *particles.sizes.as_mut_ptr().add(self.idx),
                     velocity: &mut *particles.velocities.as_mut_ptr().add(self.idx),
                     color: &mut *particles.colors.as_mut_ptr().add(self.idx),
-                    lifetime: &mut *particles.lifetimes.as_mut_ptr().add(self.idx),
                 };
                 self.idx += 1;
                 Some(particle)
