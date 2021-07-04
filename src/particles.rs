@@ -108,7 +108,7 @@ impl Particles {
     }
 
     /// Spawns a batch of particles with the given parameters.
-    pub fn spawn_batch(&mut self, batch: impl Iterator<Item = ParticleParams>) {
+    pub fn spawn_batch(&mut self, batch: impl IntoIterator<Item = ParticleParams>) {
         let (lower, upper) = batch.size_hint();
         self.reserve(self.len() + upper.unwrap_or(lower));
         for param in batch {
@@ -189,10 +189,14 @@ impl Particles {
         unsafe {
             while idx <= last && last < self.len() {
                 // SAFE: Both idx and last are always valid indicies
-                if *self.expirations.get_unchecked(idx) <= self.lifetime {
+                if *self.expirations.get_unchecked(last) <= self.lifetime {
+                    // Avoids the copy in the second block.
+                    last -= 1;
+                } else if *self.expirations.get_unchecked(idx) <= self.lifetime {
                     self.kill(idx, last);
                     last -= 1;
                 } else {
+                    self.positions[idx] += self.velocities[idx] * delta_time;
                     idx += 1;
                 }
             }
@@ -202,10 +206,6 @@ impl Particles {
             } else {
                 self.flush(last + 1);
             }
-        }
-
-        for (pos, velocity) in self.positions.iter_mut().zip(self.velocities.iter_mut()) {
-            *pos += *velocity * delta_time;
         }
     }
 

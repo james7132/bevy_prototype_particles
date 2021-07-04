@@ -27,7 +27,7 @@ fn create_scene(
 }
 
 fn create_particles(mut commands: Commands) {
-    const PARTICLE_SYSTEM_COUNT: usize = 900;
+    const PARTICLE_SYSTEM_COUNT: usize = 90;
     const PARTICLE_COUNT: usize = 10000;
     let mut rng = rand::thread_rng();
     for _ in 0..PARTICLE_SYSTEM_COUNT {
