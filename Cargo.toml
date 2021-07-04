@@ -7,6 +7,9 @@ license = "MIT OR Apache-2.0"
 
 [dependencies]
 rand = "0.8"
+wgpu = "0.9"
+wgpu-types = "0.9"
+bytemuck = { version = "1.7.0", features = ["derive"] }
 
 [profile.release]
 opt-level = 3

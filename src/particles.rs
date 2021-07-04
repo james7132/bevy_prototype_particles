@@ -1,9 +1,4 @@
-use bevy::{
-    prelude::*,
-    render::color::Color,
-    render2::render_resource::{BufferUsage, BufferVec},
-    tasks::ComputeTaskPool,
-};
+use bevy::{prelude::*, render::color::Color, tasks::ComputeTaskPool};
 
 #[derive(Debug, Default, Clone)]
 pub struct ParticleParams {
@@ -109,9 +104,10 @@ impl Particles {
 
     /// Spawns a batch of particles with the given parameters.
     pub fn spawn_batch(&mut self, batch: impl IntoIterator<Item = ParticleParams>) {
-        let (lower, upper) = batch.size_hint();
+        let iterator = batch.into_iter();
+        let (lower, upper) = iterator.size_hint();
         self.reserve(self.len() + upper.unwrap_or(lower));
-        for param in batch {
+        for param in iterator {
             self.spawn(param);
         }
     }
