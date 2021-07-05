@@ -137,14 +137,29 @@ impl FromWorld for ParticleShaders {
                     write_mask: ColorWrite::ALL,
                 }],
             }),
-            depth_stencil: None,
+            depth_stencil: Some(DepthStencilState {
+                format: TextureFormat::Depth32Float,
+                depth_write_enabled: false,
+                depth_compare: CompareFunction::Less,
+                stencil: StencilState {
+                    front: StencilFaceState::IGNORE,
+                    back: StencilFaceState::IGNORE,
+                    read_mask: 0,
+                    write_mask: 0,
+                },
+                bias: DepthBiasState {
+                    constant: 0,
+                    slope_scale: 0.0,
+                    clamp: 0.0,
+                },
+            }),
             layout: Some(&pipeline_layout),
             multisample: MultisampleState::default(),
             primitive: PrimitiveState {
                 topology: PrimitiveTopology::TriangleList,
                 strip_index_format: None,
                 front_face: FrontFace::Ccw,
-                cull_mode: Some(Face::Back),
+                cull_mode: None,
                 polygon_mode: PolygonMode::Fill,
                 clamp_depth: false,
                 conservative: false,
@@ -302,6 +317,13 @@ fn make_quad(render_device: &RenderDevice, particle_meta: &mut ParticleMeta) {
     for index in quad_indices {
         particle_meta.mesh_indices.push(index);
     }
+
+    particle_meta
+        .mesh_vertices
+        .write_to_staging_buffer(&render_device);
+    particle_meta
+        .mesh_indices
+        .write_to_staging_buffer(&render_device);
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -421,7 +443,7 @@ impl Draw for DrawParticle {
         pass.set_vertex_buffer(1, particle_meta.positions.buffer().unwrap().slice(..));
         pass.set_vertex_buffer(2, particle_meta.sizes.buffer().unwrap().slice(..));
         pass.set_vertex_buffer(3, particle_meta.colors.buffer().unwrap().slice(..));
-        pass.draw_indexed(0..4, 0, range.start as u32..range.end as u32);
+        pass.draw_indexed(0..6, 0, range.start as u32..range.end as u32);
     }
 }
 
@@ -435,6 +457,12 @@ impl Node for ParticleNode {
         world: &World,
     ) -> Result<(), NodeRunError> {
         let particle_buffers = world.get_resource::<ParticleMeta>().unwrap();
+        particle_buffers
+            .mesh_vertices
+            .write_to_buffer(&mut render_context.command_encoder);
+        particle_buffers
+            .mesh_indices
+            .write_to_buffer(&mut render_context.command_encoder);
         particle_buffers
             .positions
             .write_to_buffer(&mut render_context.command_encoder);

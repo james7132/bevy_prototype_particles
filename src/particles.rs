@@ -183,7 +183,7 @@ impl Particles {
         let mut last = self.len() - 1;
         let mut idx = 0;
         unsafe {
-            while idx <= last && last < self.len() {
+            while idx <= last && last > 0 {
                 // SAFE: Both idx and last are always valid indicies
                 if *self.expirations.get_unchecked(last) <= self.lifetime {
                     // Avoids the copy in the second block.

@@ -3,7 +3,7 @@ use bevy::prelude::*;
 mod curve;
 mod emitter;
 mod particles;
-mod render;
+pub mod render;
 
 pub use emitter::*;
 pub use particles::*;
@@ -41,5 +41,7 @@ impl Plugin for ParticlePlugin {
         graph
             .add_node_edge("particles", core_pipeline::node::MAIN_PASS_DEPENDENCIES)
             .unwrap();
+
+        bevy::log::info!("TEST");
     }
 }

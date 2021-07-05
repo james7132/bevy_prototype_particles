@@ -8,55 +8,51 @@ struct View {
 var view: View;
 
 struct VertexInput {
-  [[location(0)]] vertex_position: vec4<f32>,
-  [[location(1)]] vertex_uv: vec2<f32>,
-  [[location(2)]] particle_position: vec4<f32>,
-  [[location(3)]] particle_size: vec4<f32>,
-  [[location(4)]] particle_color: vec4<f32>,
-}
+  [[location(0)]] vertex_position: vec3<f32>;
+  [[location(1)]] vertex_uv: vec2<f32>;
+  [[location(2)]] particle_position: vec4<f32>;
+  [[location(3)]] particle_size: f32;
+  [[location(4)]] particle_color: vec4<f32>;
+};
 
 struct VertexOutput {
-  [[builtin(position)]] position: vec4<f32>,
-  [[location(0)]] color: vec4<f32>,
-  [[location(1)]] uv: vec2<f32>,
-}
+  [[builtin(position)]] position: vec4<f32>;
+  [[location(0)]] color: vec4<f32>;
+  [[location(1)]] uv: vec2<f32>;
+};
 
-[stage(vertex)]
+[[stage(vertex)]]
 fn vs_main(model: VertexInput) -> VertexOutput {
-  var pos = model.particle_position.xyz;
-  var rot = model.particle_position.w;
-  var size = model.particle_size;
-  var translation: mat4x4<f32> = mat4x4<f32>(
-    vec4<f32>(1.0, 0.0, 0.0, 0.0),
-    vec4<f32>(0.0, 1.0, 0.0, 0.0),
-    vec4<f32>(0.0, 0.0, 1.0, 0.0),
-    vec4<f32>(pos, 1.0);
+  // Uses the view projection matrix to compute the world-space movement directions
+  // TODO: This is actually constant for all billboards and is best done CPU-side.
+  var camera_right: vec3<f32> = 
+    normalize(vec3<f32>(view.view_proj.x.x, view.view_proj.y.x, view.view_proj.z.x));
+  var camera_up: vec3<f32> = 
+    normalize(vec3<f32>(view.view_proj.x.y, view.view_proj.y.y, view.view_proj.z.y));
+
+  var theta: f32 = model.particle_position.w;
+  var sin_cos: vec2<f32> = vec2<f32>(cos(theta), sin(theta));
+  
+  var rotation: mat2x2<f32> = mat2x2<f32>(
+    vec2<f32>(sin_cos.x, -sin_cos.y),
+    vec2<f32>(sin_cos.y, sin_cos.x),
   );
 
-  var rotation: mat4x4<f32> = mat4x4<f32>(
-    vec4<f32>(cos(rot), sin(rot), 0.0, 0.0),
-    vec4<f32>(-sin(rot), cos(rot), 0.0, 0.0),
-    vec4<f32>(0.0, 0.0, 1.0, 0.0),
-    vec4<f32>(0.0, 0.0, 0.0, 1.0),
-  );
+  var position: vec2<f32> = rotation * model.vertex_position.xy;
 
-  var scale: mat4x4<f32> = mat4x4<f32>(
-    vec4<f32>(size, 0, 0.0, 0.0),
-    vec4<f32>(0, size, 0.0, 0.0),
-    vec4<f32>(0.0, 0.0, size, 0.0),
-    vec4<f32>(0.0, 0.0, 0.0, 1.0),
-  );
-
-  var transform = translation * rotation * scale;
+  var world_space: vec3<f32> = 
+    model.particle_position.xyz + 
+    (camera_right * position.x * model.particle_size) + 
+    (camera_up * position.y * model.particle_size);
 
   var out: VertexOutput;
-  out.color = model.color;
+  out.position = view.view_proj * vec4<f32>(world_space, 1.0);
+  out.color = model.particle_color;
   out.uv = model.vertex_uv;
-  out.position = view.view_proj * transform * vec4<f32>(model.position, 0.0);
   return out;
 }
 
-[stage(fragment)]
+[[stage(fragment)]]
 fn fs_main(in: VertexOutput) -> [[location(0)]] vec4<f32> {
   return in.color;
 }

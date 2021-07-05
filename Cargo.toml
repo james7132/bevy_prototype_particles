@@ -16,13 +16,13 @@ opt-level = 3
 
 [dependencies.bevy]
 git = "https://github.com/james7132/bevy"
-branch = "buffer-vec"
+branch = "buffer-vec-fix"
 default-features = false
 features = ["render", "bevy_render2"]
 
 [dev-dependencies.bevy]
 git = "https://github.com/james7132/bevy"
-branch = "buffer-vec"
+branch = "buffer-vec-fix"
 default-features = true
 features = ["render", "bevy_render2"]
 
@@ -33,3 +33,7 @@ path = "examples/simple.rs"
 [[example]]
 name = "entities"
 path = "examples/entities.rs"
+
+[[example]]
+name = "rendering"
+path = "examples/rendering.rs"
