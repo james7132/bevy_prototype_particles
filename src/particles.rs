@@ -197,7 +197,7 @@ impl Particles {
                 }
             }
             // SAFE: the set length is always smaller than the original length or underflowed.
-            if last >= self.len() {
+            if last == 0 {
                 self.flush(0);
             } else {
                 self.flush(last + 1);
