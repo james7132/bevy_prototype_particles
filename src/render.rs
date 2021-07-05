@@ -212,6 +212,11 @@ pub fn prepare_particles(
         total_count += particle.positions.len();
     }
 
+    particle_meta.ranges.clear();
+    if total_count == 0 {
+        return;
+    }
+
     particle_meta
         .positions
         .reserve_and_clear(total_count, &render_device);
@@ -221,7 +226,6 @@ pub fn prepare_particles(
     particle_meta
         .colors
         .reserve_and_clear(total_count, &render_device);
-    particle_meta.ranges.clear();
 
     let mut start: u64 = 0;
     for particle in extracted_particles.particles.iter() {
@@ -258,7 +262,7 @@ pub fn queue_particles(
     // gpu_images: Res<RenderAssets<Image>>,
     mut views: Query<&mut RenderPhase<Transparent3dPhase>>,
 ) {
-    if view_meta.uniforms.is_empty() {
+    if view_meta.uniforms.is_empty() || extracted_particles.particles.is_empty() {
         return;
     }
 
@@ -343,17 +347,18 @@ impl Draw for DrawParticle {
         let view_uniform = views.get(view).unwrap();
         let particle_meta = particle_meta.into_inner();
 
-        let range = &particle_meta.ranges[draw_key];
-        pass.set_render_pipeline(&shaders.into_inner().pipeline);
-        pass.set_bind_group(
-            0,
-            particle_meta.view_bind_group.as_ref().unwrap(),
-            &[view_uniform.offset],
-        );
-        pass.set_vertex_buffer(0, particle_meta.positions.buffer().unwrap().slice(..));
-        pass.set_vertex_buffer(1, particle_meta.sizes.buffer().unwrap().slice(..));
-        pass.set_vertex_buffer(2, particle_meta.colors.buffer().unwrap().slice(..));
-        pass.draw(0..6, range.start as u32..range.end as u32);
+        if let Some(range) = particle_meta.ranges.get(draw_key).as_ref() {
+            pass.set_render_pipeline(&shaders.into_inner().pipeline);
+            pass.set_bind_group(
+                0,
+                particle_meta.view_bind_group.as_ref().unwrap(),
+                &[view_uniform.offset],
+            );
+            pass.set_vertex_buffer(0, particle_meta.positions.buffer().unwrap().slice(..));
+            pass.set_vertex_buffer(1, particle_meta.sizes.buffer().unwrap().slice(..));
+            pass.set_vertex_buffer(2, particle_meta.colors.buffer().unwrap().slice(..));
+            pass.draw(0..6, range.start as u32..range.end as u32);
+        }
     }
 }
 
