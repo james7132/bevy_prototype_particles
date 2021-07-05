@@ -68,30 +68,13 @@ impl FromWorld for ParticleShaders {
                 module: &shader_module,
                 entry_point: "vs_main",
                 buffers: &[
-                    // Mesh vertices
-                    wgpu::VertexBufferLayout {
-                        array_stride: std::mem::size_of::<ParticleVertex>() as wgpu::BufferAddress,
-                        step_mode: wgpu::InputStepMode::Vertex,
-                        attributes: &[
-                            wgpu::VertexAttribute {
-                                offset: 0,
-                                shader_location: 0,
-                                format: wgpu::VertexFormat::Float32x3,
-                            },
-                            wgpu::VertexAttribute {
-                                offset: std::mem::size_of::<Vec3>() as wgpu::BufferAddress,
-                                shader_location: 1,
-                                format: wgpu::VertexFormat::Float32x2,
-                            },
-                        ],
-                    },
                     // Positions/Rotations
                     wgpu::VertexBufferLayout {
                         array_stride: std::mem::size_of::<Vec4>() as wgpu::BufferAddress,
                         step_mode: wgpu::InputStepMode::Instance,
                         attributes: &[wgpu::VertexAttribute {
                             offset: 0,
-                            shader_location: 2,
+                            shader_location: 0,
                             format: wgpu::VertexFormat::Float32x4,
                         }],
                     },
@@ -101,7 +84,7 @@ impl FromWorld for ParticleShaders {
                         step_mode: wgpu::InputStepMode::Instance,
                         attributes: &[wgpu::VertexAttribute {
                             offset: 0,
-                            shader_location: 3,
+                            shader_location: 1,
                             format: wgpu::VertexFormat::Float32,
                         }],
                     },
@@ -111,7 +94,7 @@ impl FromWorld for ParticleShaders {
                         step_mode: wgpu::InputStepMode::Instance,
                         attributes: &[wgpu::VertexAttribute {
                             offset: 0,
-                            shader_location: 4,
+                            shader_location: 2,
                             format: wgpu::VertexFormat::Float32x4,
                         }],
                     },
@@ -200,8 +183,6 @@ pub fn extract_particles(mut commands: Commands, query: Query<(&Particles, &Part
 }
 
 pub struct ParticleMeta {
-    mesh_vertices: BufferVec<ParticleVertex>,
-    mesh_indices: BufferVec<u32>,
     positions: BufferVec<Vec4>,
     sizes: BufferVec<f32>,
     colors: BufferVec<Vec4>,
@@ -212,8 +193,6 @@ pub struct ParticleMeta {
 impl Default for ParticleMeta {
     fn default() -> Self {
         Self {
-            mesh_vertices: BufferVec::new(BufferUsage::VERTEX),
-            mesh_indices: BufferVec::new(BufferUsage::INDEX),
             positions: BufferVec::new(BufferUsage::VERTEX),
             sizes: BufferVec::new(BufferUsage::VERTEX),
             colors: BufferVec::new(BufferUsage::VERTEX),
@@ -268,64 +247,6 @@ fn batch_copy<T: Pod>(src: &Vec<T>, dst: &mut BufferVec<T>) {
     }
 }
 
-fn make_quad(render_device: &RenderDevice, particle_meta: &mut ParticleMeta) {
-    let quad: Mesh = Quad {
-        size: Vec2::new(1.0, 1.0),
-        ..Default::default()
-    }
-    .into();
-
-    let quad_vertex_positions = if let VertexAttributeValues::Float32x3(vertex_positions) =
-        quad.attribute(Mesh::ATTRIBUTE_POSITION).unwrap().clone()
-    {
-        vertex_positions
-    } else {
-        panic!("expected vec3");
-    };
-
-    let quad_vertex_uvs = if let VertexAttributeValues::Float32x2(vertex_uvs) =
-        quad.attribute(Mesh::ATTRIBUTE_UV_0).unwrap().clone()
-    {
-        vertex_uvs
-    } else {
-        panic!("expected vec2");
-    };
-
-    let quad_indices = if let Indices::U32(indices) = quad.indices().unwrap() {
-        indices.clone()
-    } else {
-        panic!("expected u32 indices");
-    };
-
-    particle_meta
-        .mesh_vertices
-        .reserve_and_clear(quad_vertex_positions.len(), &render_device);
-    particle_meta
-        .mesh_indices
-        .reserve_and_clear(quad_indices.len(), &render_device);
-
-    for (vertex_position, vertex_uv) in quad_vertex_positions
-        .into_iter()
-        .zip(quad_vertex_uvs.into_iter())
-    {
-        particle_meta.mesh_vertices.push(ParticleVertex {
-            position: vertex_position.into(),
-            uv: vertex_uv.into(),
-        });
-    }
-
-    for index in quad_indices {
-        particle_meta.mesh_indices.push(index);
-    }
-
-    particle_meta
-        .mesh_vertices
-        .write_to_staging_buffer(&render_device);
-    particle_meta
-        .mesh_indices
-        .write_to_staging_buffer(&render_device);
-}
-
 #[allow(clippy::too_many_arguments)]
 pub fn queue_particles(
     draw_functions: Res<DrawFunctions>,
@@ -339,11 +260,6 @@ pub fn queue_particles(
 ) {
     if view_meta.uniforms.is_empty() {
         return;
-    }
-
-    // TODO: define this without needing to check every frame
-    if particle_meta.mesh_vertices.buffer().is_none() {
-        make_quad(&render_device, &mut particle_meta);
     }
 
     // TODO: define this without needing to check every frame
@@ -434,16 +350,10 @@ impl Draw for DrawParticle {
             particle_meta.view_bind_group.as_ref().unwrap(),
             &[view_uniform.offset],
         );
-        pass.set_index_buffer(
-            particle_meta.mesh_indices.buffer().unwrap().slice(..),
-            0,
-            IndexFormat::Uint32,
-        );
-        pass.set_vertex_buffer(0, particle_meta.mesh_vertices.buffer().unwrap().slice(..));
-        pass.set_vertex_buffer(1, particle_meta.positions.buffer().unwrap().slice(..));
-        pass.set_vertex_buffer(2, particle_meta.sizes.buffer().unwrap().slice(..));
-        pass.set_vertex_buffer(3, particle_meta.colors.buffer().unwrap().slice(..));
-        pass.draw_indexed(0..6, 0, range.start as u32..range.end as u32);
+        pass.set_vertex_buffer(0, particle_meta.positions.buffer().unwrap().slice(..));
+        pass.set_vertex_buffer(1, particle_meta.sizes.buffer().unwrap().slice(..));
+        pass.set_vertex_buffer(2, particle_meta.colors.buffer().unwrap().slice(..));
+        pass.draw(0..6, range.start as u32..range.end as u32);
     }
 }
 
@@ -457,12 +367,6 @@ impl Node for ParticleNode {
         world: &World,
     ) -> Result<(), NodeRunError> {
         let particle_buffers = world.get_resource::<ParticleMeta>().unwrap();
-        particle_buffers
-            .mesh_vertices
-            .write_to_buffer(&mut render_context.command_encoder);
-        particle_buffers
-            .mesh_indices
-            .write_to_buffer(&mut render_context.command_encoder);
         particle_buffers
             .positions
             .write_to_buffer(&mut render_context.command_encoder);

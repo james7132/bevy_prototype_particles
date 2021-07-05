@@ -2,9 +2,7 @@ use bevy::{prelude::*, render2::camera::PerspectiveCameraBundle, PipelinedDefaul
 use bevy_prototype_particles::*;
 use rand::Rng;
 
-fn create_scene(
-    mut commands: Commands,
-) {
+fn create_scene(mut commands: Commands) {
     // camera
     commands.spawn_bundle(PerspectiveCameraBundle {
         transform: Transform::from_xyz(-2.0, 2.5, 5.0).looking_at(Vec3::ZERO, Vec3::Y),
