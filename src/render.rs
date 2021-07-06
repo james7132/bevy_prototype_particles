@@ -15,10 +15,11 @@ use bevy::{
     },
 };
 use bytemuck::{Pod, Zeroable};
-use std::ops::Range;
+use std::{num::NonZeroU64, ops::Range};
 use wgpu::{
-    BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor, BufferUsage, Face,
-    FragmentState, FrontFace, MultisampleState, PolygonMode, PrimitiveState, PrimitiveTopology,
+    BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor, BindingResource, BufferBinding,
+    BufferUsage, Face, FragmentState, FrontFace, MultisampleState, PolygonMode, PrimitiveState,
+    PrimitiveTopology,
 };
 use wgpu_types::IndexFormat;
 
@@ -34,6 +35,10 @@ struct ParticleVertex {
 pub struct ParticleShaders {
     pipeline: RenderPipeline,
     view_layout: BindGroupLayout,
+    particle_layout: BindGroupLayout,
+    positions: BufferVec<Vec4>,
+    sizes: BufferVec<f32>,
+    colors: BufferVec<Vec4>,
 }
 
 impl FromWorld for ParticleShaders {
@@ -56,10 +61,49 @@ impl FromWorld for ParticleShaders {
             label: None,
         });
 
+        let particle_layout = render_device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+            label: None,
+            entries: &[
+                // Positions/Rotations
+                BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: ShaderStage::VERTEX,
+                    ty: BindingType::Buffer {
+                        ty: BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: BufferSize::new(std::mem::size_of::<Vec4>() as u64),
+                    },
+                    count: None,
+                },
+                // Sizes
+                BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: ShaderStage::VERTEX,
+                    ty: BindingType::Buffer {
+                        ty: BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: BufferSize::new(std::mem::size_of::<f32>() as u64),
+                    },
+                    count: None,
+                },
+                // Colors
+                BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: ShaderStage::VERTEX,
+                    ty: BindingType::Buffer {
+                        ty: BufferBindingType::Storage { read_only: true },
+                        has_dynamic_offset: false,
+                        min_binding_size: BufferSize::new(std::mem::size_of::<Vec4>() as u64),
+                    },
+                    count: None,
+                },
+            ],
+        });
+
         let pipeline_layout = render_device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: None,
             push_constant_ranges: &[],
-            bind_group_layouts: &[&view_layout],
+            bind_group_layouts: &[&view_layout, &particle_layout],
         });
 
         let pipeline = render_device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -67,38 +111,7 @@ impl FromWorld for ParticleShaders {
             vertex: VertexState {
                 module: &shader_module,
                 entry_point: "vs_main",
-                buffers: &[
-                    // Positions/Rotations
-                    wgpu::VertexBufferLayout {
-                        array_stride: std::mem::size_of::<Vec4>() as wgpu::BufferAddress,
-                        step_mode: wgpu::InputStepMode::Instance,
-                        attributes: &[wgpu::VertexAttribute {
-                            offset: 0,
-                            shader_location: 0,
-                            format: wgpu::VertexFormat::Float32x4,
-                        }],
-                    },
-                    // Sizes
-                    wgpu::VertexBufferLayout {
-                        array_stride: std::mem::size_of::<f32>() as wgpu::BufferAddress,
-                        step_mode: wgpu::InputStepMode::Instance,
-                        attributes: &[wgpu::VertexAttribute {
-                            offset: 0,
-                            shader_location: 1,
-                            format: wgpu::VertexFormat::Float32,
-                        }],
-                    },
-                    // Colors
-                    wgpu::VertexBufferLayout {
-                        array_stride: std::mem::size_of::<Vec4>() as wgpu::BufferAddress,
-                        step_mode: wgpu::InputStepMode::Instance,
-                        attributes: &[wgpu::VertexAttribute {
-                            offset: 0,
-                            shader_location: 2,
-                            format: wgpu::VertexFormat::Float32x4,
-                        }],
-                    },
-                ],
+                buffers: &[],
             },
             fragment: Some(FragmentState {
                 module: &shader_module,
@@ -150,8 +163,12 @@ impl FromWorld for ParticleShaders {
         });
 
         Self {
+            positions: BufferVec::new(BufferUsage::STORAGE),
+            sizes: BufferVec::new(BufferUsage::STORAGE),
+            colors: BufferVec::new(BufferUsage::STORAGE),
             pipeline,
             view_layout,
+            particle_layout,
         }
     }
 }
@@ -183,21 +200,19 @@ pub fn extract_particles(mut commands: Commands, query: Query<(&Particles, &Part
 }
 
 pub struct ParticleMeta {
-    positions: BufferVec<Vec4>,
-    sizes: BufferVec<f32>,
-    colors: BufferVec<Vec4>,
     ranges: Vec<Range<u64>>,
+    total_count: u64,
     view_bind_group: Option<BindGroup>,
+    particle_bind_group: Option<BindGroup>,
 }
 
 impl Default for ParticleMeta {
     fn default() -> Self {
         Self {
-            positions: BufferVec::new(BufferUsage::VERTEX),
-            sizes: BufferVec::new(BufferUsage::VERTEX),
-            colors: BufferVec::new(BufferUsage::VERTEX),
-            view_bind_group: None,
             ranges: Vec::new(),
+            total_count: 0,
+            view_bind_group: None,
+            particle_bind_group: None,
         }
     }
 }
@@ -205,6 +220,7 @@ impl Default for ParticleMeta {
 pub fn prepare_particles(
     render_device: Res<RenderDevice>,
     mut particle_meta: ResMut<ParticleMeta>,
+    mut particle_shaders: ResMut<ParticleShaders>,
     extracted_particles: Res<ExtractedParticles>,
 ) {
     let mut total_count = 0;
@@ -212,43 +228,56 @@ pub fn prepare_particles(
         total_count += particle.positions.len();
     }
 
+    particle_meta.total_count = total_count as u64;
     particle_meta.ranges.clear();
     if total_count == 0 {
         return;
     }
 
-    particle_meta
+    particle_shaders
         .positions
         .reserve_and_clear(total_count, &render_device);
-    particle_meta
+    particle_shaders
         .sizes
         .reserve_and_clear(total_count, &render_device);
-    particle_meta
+    particle_shaders
         .colors
         .reserve_and_clear(total_count, &render_device);
 
     let mut start: u64 = 0;
     for particle in extracted_particles.particles.iter() {
-        batch_copy(&particle.positions, &mut particle_meta.positions);
-        batch_copy(&particle.sizes, &mut particle_meta.sizes);
-        batch_copy(&particle.colors, &mut particle_meta.colors);
+        batch_copy(&particle.positions, &mut particle_shaders.positions);
+        batch_copy(&particle.sizes, &mut particle_shaders.sizes);
+        batch_copy(&particle.colors, &mut particle_shaders.colors);
         particle_meta
             .ranges
             .push(start..start + particle.positions.len() as u64);
         start += particle.positions.len() as u64;
     }
 
-    particle_meta
+    particle_shaders
         .positions
         .write_to_staging_buffer(&render_device);
-    particle_meta.sizes.write_to_staging_buffer(&render_device);
-    particle_meta.colors.write_to_staging_buffer(&render_device);
+    particle_shaders
+        .sizes
+        .write_to_staging_buffer(&render_device);
+    particle_shaders
+        .colors
+        .write_to_staging_buffer(&render_device);
 }
 
 fn batch_copy<T: Pod>(src: &Vec<T>, dst: &mut BufferVec<T>) {
     for item in src.iter() {
         dst.push(*item);
     }
+}
+
+fn bind_buffer<T: Pod>(buffer: &BufferVec<T>, count: u64) -> BindingResource {
+    BindingResource::Buffer(BufferBinding {
+        buffer: buffer.buffer().expect("missing buffer"),
+        offset: 0,
+        size: Some(NonZeroU64::new(std::mem::size_of::<T>() as u64 * count).unwrap()),
+    })
 }
 
 #[allow(clippy::too_many_arguments)]
@@ -262,7 +291,7 @@ pub fn queue_particles(
     // gpu_images: Res<RenderAssets<Image>>,
     mut views: Query<&mut RenderPhase<Transparent3dPhase>>,
 ) {
-    if view_meta.uniforms.is_empty() || extracted_particles.particles.is_empty() {
+    if view_meta.uniforms.is_empty() || particle_meta.total_count == 0 {
         return;
     }
 
@@ -277,6 +306,28 @@ pub fn queue_particles(
             layout: &particle_shaders.view_layout,
         })
     });
+
+    // TODO(james7132): Find a way to cache this.
+    particle_meta.particle_bind_group =
+        Some(render_device.create_bind_group(&BindGroupDescriptor {
+            entries: &[
+                BindGroupEntry {
+                    binding: 0,
+                    resource: bind_buffer(&particle_shaders.positions, particle_meta.total_count),
+                },
+                BindGroupEntry {
+                    binding: 1,
+                    resource: bind_buffer(&particle_shaders.sizes, particle_meta.total_count),
+                },
+                BindGroupEntry {
+                    binding: 2,
+                    resource: bind_buffer(&particle_shaders.colors, particle_meta.total_count),
+                },
+            ],
+            label: None,
+            layout: &particle_shaders.particle_layout,
+        }));
+
     // let particle_meta = &mut *particle_meta;
     let draw_sprite_function = draw_functions.read().get_id::<DrawParticle>().unwrap();
     // sprite_meta.texture_bind_groups.next_frame();
@@ -348,16 +399,16 @@ impl Draw for DrawParticle {
         let particle_meta = particle_meta.into_inner();
 
         if let Some(range) = particle_meta.ranges.get(draw_key).as_ref() {
+            let vertex_range = (range.start * 6) as u32..(range.end * 6) as u32;
+
             pass.set_render_pipeline(&shaders.into_inner().pipeline);
             pass.set_bind_group(
                 0,
                 particle_meta.view_bind_group.as_ref().unwrap(),
                 &[view_uniform.offset],
             );
-            pass.set_vertex_buffer(0, particle_meta.positions.buffer().unwrap().slice(..));
-            pass.set_vertex_buffer(1, particle_meta.sizes.buffer().unwrap().slice(..));
-            pass.set_vertex_buffer(2, particle_meta.colors.buffer().unwrap().slice(..));
-            pass.draw(0..6, range.start as u32..range.end as u32);
+            pass.set_bind_group(1, particle_meta.particle_bind_group.as_ref().unwrap(), &[]);
+            pass.draw(vertex_range, 0..1);
         }
     }
 }
@@ -371,7 +422,7 @@ impl Node for ParticleNode {
         render_context: &mut RenderContext,
         world: &World,
     ) -> Result<(), NodeRunError> {
-        let particle_buffers = world.get_resource::<ParticleMeta>().unwrap();
+        let particle_buffers = world.get_resource::<ParticleShaders>().unwrap();
         particle_buffers
             .positions
             .write_to_buffer(&mut render_context.command_encoder);

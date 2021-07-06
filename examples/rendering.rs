@@ -11,7 +11,7 @@ fn create_scene(mut commands: Commands) {
 }
 
 fn create_particles(mut commands: Commands) {
-    const PARTICLE_COUNT: usize = 1000;
+    const PARTICLE_COUNT: usize = 100000;
     let mut rng = rand::thread_rng();
     let mut particles = Particles::new(PARTICLE_COUNT);
     for _ in 0..PARTICLE_COUNT {
@@ -35,7 +35,7 @@ fn create_particles(mut commands: Commands) {
                 rng.gen_range(-1.0..1.0),
                 rng.gen_range(-1.0..1.0),
             )) * rng.gen_range(0.0..3.0),
-            lifetime: rng.gen_range(1.0..100.0),
+            lifetime: rng.gen_range(1.0..10.0),
             ..Default::default()
         });
     }

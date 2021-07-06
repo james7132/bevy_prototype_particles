@@ -7,11 +7,19 @@ struct View {
 [[group(0), binding(0)]]
 var view: View;
 
+[[block]] struct PositionBuffer { data: array<vec4<f32>>; };
+[[block]] struct SizeBuffer { data: array<f32>; };
+[[block]] struct ColorBuffer { data: array<vec4<f32>>; };
+
+[[group(1), binding(0)]]
+var<storage> positions: [[access(read)]] PositionBuffer;
+[[group(1), binding(1)]]
+var<storage> sizes: [[access(read)]] SizeBuffer;
+[[group(1), binding(2)]]
+var<storage> colors: [[access(read)]] ColorBuffer;
+
 struct VertexInput {
   [[builtin(vertex_index)]] vertex_idx: u32;
-  [[location(0)]] particle_position: vec4<f32>;
-  [[location(1)]] particle_size: f32;
-  [[location(2)]] particle_color: vec4<f32>;
 };
 
 struct VertexOutput {
@@ -20,10 +28,9 @@ struct VertexOutput {
   [[location(1)]] uv: vec2<f32>;
 };
 
-
 [[stage(vertex)]]
 fn vs_main(model: VertexInput) -> VertexOutput {
-  var positions: array<vec2<f32>, 6> = array<vec2<f32>, 6>(
+  var vertex_positions: array<vec2<f32>, 6> = array<vec2<f32>, 6>(
     vec2<f32>(-0.5, -0.5),
     vec2<f32>(0.5, 0.5),
     vec2<f32>(-0.5, 0.5),
@@ -42,6 +49,7 @@ fn vs_main(model: VertexInput) -> VertexOutput {
   );
 
   let vert_idx = model.vertex_idx % 6u;
+  let particle_idx = model.vertex_idx / 6u;
 
   // Uses the view projection matrix to compute the world-space movement directions
   // TODO: This is actually constant for all billboards and is best done CPU-side.
@@ -50,7 +58,9 @@ fn vs_main(model: VertexInput) -> VertexOutput {
   let camera_up = 
     normalize(vec3<f32>(view.view_proj.x.y, view.view_proj.y.y, view.view_proj.z.y));
 
-  let theta = model.particle_position.w;
+  let particle_position = positions.data[particle_idx].xyz;
+  let theta = positions.data[particle_idx].w;
+  let size = sizes.data[particle_idx];
   let sin_cos = vec2<f32>(cos(theta), sin(theta));
   
   let rotation = mat2x2<f32>(
@@ -58,16 +68,16 @@ fn vs_main(model: VertexInput) -> VertexOutput {
     vec2<f32>(sin_cos.y, sin_cos.x),
   );
 
-  let position = rotation * positions[vert_idx];
+  let vertex_position = rotation * vertex_positions[vert_idx];
 
   var world_space: vec3<f32> = 
-    model.particle_position.xyz + 
-    (camera_right * position.x * model.particle_size) + 
-    (camera_up * position.y * model.particle_size);
+    particle_position + 
+    (camera_right * vertex_position.x * size) + 
+    (camera_up * vertex_position.y * size);
 
   var out: VertexOutput;
   out.position = view.view_proj * vec4<f32>(world_space, 1.0);
-  out.color = model.particle_color;
+  out.color = colors.data[particle_idx];
   out.uv = uvs[vert_idx];
   return out;
 }
