@@ -1,44 +1,47 @@
-use crate::particles::Particles;
+use crate::{
+    material::{ParticleMaterial, ParticleMaterialUniformData},
+    particles::Particles,
+};
 use bevy::{
     ecs::system::SystemState,
     prelude::*,
     render2::{
         core_pipeline::Transparent3dPhase,
         mesh::{shape::Quad, Indices, Mesh, VertexAttributeValues},
+        render_asset::RenderAssets,
         render_graph::{Node, NodeRunError, RenderGraphContext},
         render_phase::{Draw, DrawFunctions, Drawable, RenderPhase, TrackedRenderPass},
         render_resource::*,
-        renderer::{RenderContext, RenderDevice},
+        renderer::{RenderContext, RenderDevice, RenderQueue},
         shader::Shader,
-        texture::BevyDefault,
+        texture::{BevyDefault, GpuImage, Image, TextureFormatPixelInfo},
         view::{ViewMeta, ViewUniform, ViewUniformOffset},
     },
+    utils::slab::{FrameSlabMap, FrameSlabMapKey},
 };
 use bytemuck::{Pod, Zeroable};
+use crevice::std140::AsStd140;
 use std::{num::NonZeroU64, ops::Range};
 use wgpu::{
     BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor, BindingResource, BufferBinding,
-    BufferUsage, Face, FragmentState, FrontFace, MultisampleState, PolygonMode, PrimitiveState,
-    PrimitiveTopology,
+    BufferUsage, Face, FragmentState, FrontFace, ImageCopyTexture, ImageDataLayout,
+    MultisampleState, Origin3d, PolygonMode, PrimitiveState, PrimitiveTopology,
 };
 use wgpu_types::IndexFormat;
 
-pub struct ParticleMaterial {}
-
-#[repr(C)]
-#[derive(Clone, Copy, Pod, Zeroable, Default)]
-struct ParticleVertex {
-    position: Vec3,
-    uv: Vec2,
-}
-
 pub struct ParticleShaders {
     pipeline: RenderPipeline,
+
     view_layout: BindGroupLayout,
     particle_layout: BindGroupLayout,
+    material_layout: BindGroupLayout,
+
     positions: BufferVec<Vec4>,
     sizes: BufferVec<f32>,
     colors: BufferVec<Vec4>,
+
+    // This dummy white texture is to be used in place of optional StandardMaterial textures
+    dummy_white_gpu_image: GpuImage,
 }
 
 impl FromWorld for ParticleShaders {
@@ -100,10 +103,49 @@ impl FromWorld for ParticleShaders {
             ],
         });
 
+        let material_layout = render_device.create_bind_group_layout(&BindGroupLayoutDescriptor {
+            label: None,
+            entries: &[
+                BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: ShaderStage::FRAGMENT,
+                    ty: BindingType::Buffer {
+                        ty: BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: BufferSize::new(
+                            ParticleMaterialUniformData::std140_size_static() as u64,
+                        ),
+                    },
+                    count: None,
+                },
+                // Base Color Texture
+                BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: ShaderStage::FRAGMENT,
+                    ty: BindingType::Texture {
+                        multisampled: false,
+                        sample_type: TextureSampleType::Float { filterable: true },
+                        view_dimension: TextureViewDimension::D2,
+                    },
+                    count: None,
+                },
+                // Base Color Texture Sampler
+                BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: ShaderStage::FRAGMENT,
+                    ty: BindingType::Sampler {
+                        comparison: false,
+                        filtering: true,
+                    },
+                    count: None,
+                },
+            ],
+        });
+
         let pipeline_layout = render_device.create_pipeline_layout(&PipelineLayoutDescriptor {
             label: None,
             push_constant_ranges: &[],
-            bind_group_layouts: &[&view_layout, &particle_layout],
+            bind_group_layouts: &[&view_layout, &particle_layout, &material_layout],
         });
 
         let pipeline = render_device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -162,18 +204,65 @@ impl FromWorld for ParticleShaders {
             },
         });
 
+        // A 1x1x1 'all 1.0' texture to use as a dummy texture to use in place of optional StandardMaterial textures
+        let dummy_white_gpu_image = {
+            let image = Image::new_fill(
+                Extent3d::default(),
+                TextureDimension::D2,
+                &[255u8; 4],
+                TextureFormat::bevy_default(),
+            );
+            let texture = render_device.create_texture(&image.texture_descriptor);
+            let sampler = render_device.create_sampler(&image.sampler_descriptor);
+
+            let format_size = image.texture_descriptor.format.pixel_size();
+            let render_queue = world.get_resource_mut::<RenderQueue>().unwrap();
+            render_queue.write_texture(
+                ImageCopyTexture {
+                    texture: &texture,
+                    mip_level: 0,
+                    origin: Origin3d::ZERO,
+                },
+                &image.data,
+                ImageDataLayout {
+                    offset: 0,
+                    bytes_per_row: Some(
+                        std::num::NonZeroU32::new(
+                            image.texture_descriptor.size.width * format_size as u32,
+                        )
+                        .unwrap(),
+                    ),
+                    rows_per_image: None,
+                },
+                image.texture_descriptor.size,
+            );
+
+            let texture_view = texture.create_view(&TextureViewDescriptor::default());
+            GpuImage {
+                texture,
+                texture_view,
+                sampler,
+            }
+        };
+
         Self {
+            pipeline,
+
+            view_layout,
+            particle_layout,
+            material_layout,
+
             positions: BufferVec::new(BufferUsage::STORAGE),
             sizes: BufferVec::new(BufferUsage::STORAGE),
             colors: BufferVec::new(BufferUsage::STORAGE),
-            pipeline,
-            view_layout,
-            particle_layout,
+
+            dummy_white_gpu_image,
         }
     }
 }
 
 pub struct ExtractedParticle {
+    material: Handle<ParticleMaterial>,
     positions: Vec<Vec4>,
     sizes: Vec<f32>,
     colors: Vec<Vec4>,
@@ -183,15 +272,29 @@ pub struct ExtractedParticles {
     particles: Vec<ExtractedParticle>,
 }
 
-pub fn extract_particles(mut commands: Commands, query: Query<(&Particles, &ParticleMaterial)>) {
+pub fn extract_particles(
+    mut commands: Commands,
+    materials: Res<Assets<ParticleMaterial>>,
+    images: Res<Assets<Image>>,
+    query: Query<(&Particles, &Handle<ParticleMaterial>)>,
+) {
     let mut extracted_particles = Vec::new();
-    for (particles, _) in query.iter() {
-        // TODO(james7132): Find a way to do this without
-        extracted_particles.push(ExtractedParticle {
-            positions: particles.positions.clone(),
-            sizes: particles.sizes.clone(),
-            colors: particles.colors.clone(),
-        });
+    for (particles, material_handle) in query.iter() {
+        if let Some(ref material) = materials.get(material_handle) {
+            if let Some(ref image) = material.base_color_texture {
+                if !images.contains(image) {
+                    continue;
+                }
+            }
+
+            // TODO(james7132): Find a way to do this without
+            extracted_particles.push(ExtractedParticle {
+                material: material_handle.clone_weak(),
+                positions: particles.positions.clone(),
+                sizes: particles.sizes.clone(),
+                colors: particles.colors.clone(),
+            });
+        }
     }
 
     commands.insert_resource(ExtractedParticles {
@@ -199,22 +302,15 @@ pub fn extract_particles(mut commands: Commands, query: Query<(&Particles, &Part
     });
 }
 
+#[derive(Default)]
 pub struct ParticleMeta {
     ranges: Vec<Range<u64>>,
     total_count: u64,
     view_bind_group: Option<BindGroup>,
     particle_bind_group: Option<BindGroup>,
-}
 
-impl Default for ParticleMeta {
-    fn default() -> Self {
-        Self {
-            ranges: Vec::new(),
-            total_count: 0,
-            view_bind_group: None,
-            particle_bind_group: None,
-        }
-    }
+    material_bind_groups: FrameSlabMap<Handle<ParticleMaterial>, BindGroup>,
+    material_bind_group_keys: Vec<FrameSlabMapKey<Handle<ParticleMaterial>, BindGroup>>,
 }
 
 pub fn prepare_particles(
@@ -280,6 +376,25 @@ fn bind_buffer<T: Pod>(buffer: &BufferVec<T>, count: u64) -> BindingResource {
     })
 }
 
+fn image_handle_to_view_sampler<'a>(
+    particle_shaders: &'a ParticleShaders,
+    gpu_images: &'a RenderAssets<Image>,
+    image_option: &Option<Handle<Image>>,
+) -> (&'a TextureView, &'a Sampler) {
+    image_option.as_ref().map_or(
+        (
+            &particle_shaders.dummy_white_gpu_image.texture_view,
+            &particle_shaders.dummy_white_gpu_image.sampler,
+        ),
+        |image_handle| {
+            let gpu_image = gpu_images
+                .get(image_handle)
+                .expect("only materials with valid textures should be drawn");
+            (&gpu_image.texture_view, &gpu_image.sampler)
+        },
+    )
+}
+
 #[allow(clippy::too_many_arguments)]
 pub fn queue_particles(
     draw_functions: Res<DrawFunctions>,
@@ -288,7 +403,8 @@ pub fn queue_particles(
     view_meta: Res<ViewMeta>,
     particle_shaders: Res<ParticleShaders>,
     extracted_particles: Res<ExtractedParticles>,
-    // gpu_images: Res<RenderAssets<Image>>,
+    render_materials: Res<RenderAssets<ParticleMaterial>>,
+    gpu_images: Res<RenderAssets<Image>>,
     mut views: Query<&mut RenderPhase<Transparent3dPhase>>,
 ) {
     if view_meta.uniforms.is_empty() || particle_meta.total_count == 0 {
@@ -330,38 +446,50 @@ pub fn queue_particles(
 
     // let particle_meta = &mut *particle_meta;
     let draw_sprite_function = draw_functions.read().get_id::<DrawParticle>().unwrap();
-    // sprite_meta.texture_bind_groups.next_frame();
-    // sprite_meta.texture_bind_group_keys.clear();
+    particle_meta.material_bind_groups.next_frame();
+    particle_meta.material_bind_group_keys.clear();
     for mut transparent_phase in views.iter_mut() {
-        for (i, _) in extracted_particles.particles.iter().enumerate() {
-            // let texture_bind_group_key = sprite_meta.texture_bind_groups.get_or_insert_with(
-            //     sprite.handle.clone_weak(),
-            //     || {
-            //         let gpu_image = gpu_images.get(&sprite.handle).unwrap();
-            //         render_device.create_bind_group(&BindGroupDescriptor {
-            //             entries: &[
-            //                 BindGroupEntry {
-            //                     binding: 0,
-            //                     resource: BindingResource::TextureView(&gpu_image.texture_view),
-            //                 },
-            //                 BindGroupEntry {
-            //                     binding: 1,
-            //                     resource: BindingResource::Sampler(&gpu_image.sampler),
-            //                 },
-            //             ],
-            //             label: None,
-            //             layout: &sprite_shaders.material_layout,
-            //         })
-            //     },
-            // );
-            // sprite_meta
-            //     .texture_bind_group_keys
-            //     .push(texture_bind_group_key);
+        for (i, particle) in extracted_particles.particles.iter().enumerate() {
+            let gpu_material = render_materials
+                .get(&particle.material)
+                .expect("Failed to get ParticleMaterial PreparedAsset");
+
+            let bind_group_key = particle_meta.material_bind_groups.get_or_insert_with(
+                particle.material.clone_weak(),
+                || {
+                    let (base_color_texture_view, base_color_sampler) =
+                        image_handle_to_view_sampler(
+                            &particle_shaders,
+                            &gpu_images,
+                            &gpu_material.base_color_texture,
+                        );
+
+                    render_device.create_bind_group(&BindGroupDescriptor {
+                        entries: &[
+                            BindGroupEntry {
+                                binding: 0,
+                                resource: gpu_material.buffer.as_entire_binding(),
+                            },
+                            BindGroupEntry {
+                                binding: 1,
+                                resource: BindingResource::TextureView(&base_color_texture_view),
+                            },
+                            BindGroupEntry {
+                                binding: 2,
+                                resource: BindingResource::Sampler(&base_color_sampler),
+                            },
+                        ],
+                        label: None,
+                        layout: &particle_shaders.material_layout,
+                    })
+                },
+            );
+            particle_meta.material_bind_group_keys.push(bind_group_key);
 
             transparent_phase.add(Drawable {
                 draw_function: draw_sprite_function,
                 draw_key: i,
-                sort_key: i,
+                sort_key: bind_group_key.index(),
             });
         }
     }
@@ -408,6 +536,12 @@ impl Draw for DrawParticle {
                 &[view_uniform.offset],
             );
             pass.set_bind_group(1, particle_meta.particle_bind_group.as_ref().unwrap(), &[]);
+            pass.set_bind_group(
+                2,
+                &particle_meta.material_bind_groups
+                    [particle_meta.material_bind_group_keys[draw_key]],
+                &[],
+            );
             pass.draw(vertex_range, 0..1);
         }
     }

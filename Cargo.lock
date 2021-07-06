@@ -500,7 +500,9 @@ name = "bevy_prototype_particles"
 version = "0.1.0"
 dependencies = [
  "bevy",
+ "bitflags",
  "bytemuck",
+ "crevice",
  "rand",
  "wgpu",
  "wgpu-types",

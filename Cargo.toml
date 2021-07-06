@@ -10,6 +10,7 @@ rand = "0.8"
 wgpu = "0.9"
 wgpu-types = "0.9"
 bytemuck = { version = "1.7.0", features = ["derive"] }
+bitflags = "1.2"
 
 [profile.release]
 opt-level = 3
@@ -19,6 +20,10 @@ git = "https://github.com/james7132/bevy"
 branch = "buffer-vec-fix"
 default-features = false
 features = ["render", "bevy_render2"]
+
+[dependencies.crevice]
+git = "https://github.com/james7132/bevy"
+branch = "buffer-vec-fix"
 
 [dev-dependencies.bevy]
 git = "https://github.com/james7132/bevy"

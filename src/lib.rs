@@ -2,14 +2,18 @@ use bevy::prelude::*;
 
 mod curve;
 mod emitter;
+mod material;
 mod particles;
-pub mod render;
+mod render;
 
 pub use emitter::*;
+pub use material::*;
 pub use particles::*;
+pub use render::*;
 
-use bevy::render2::{
-    core_pipeline, render_graph::RenderGraph, render_phase::DrawFunctions, RenderStage,
+use bevy::{
+    ecs::prelude::*,
+    render2::{core_pipeline, render_graph::RenderGraph, render_phase::DrawFunctions, RenderStage},
 };
 use render::{DrawParticle, ParticleMeta, ParticleNode, ParticleShaders};
 
@@ -17,7 +21,8 @@ pub struct ParticlePlugin;
 
 impl Plugin for ParticlePlugin {
     fn build(&self, app: &mut App) {
-        app.add_system(particles::update_particles.system())
+        app.add_plugin(ParticleMaterialPlugin)
+            .add_system(particles::update_particles.system())
             .add_system(emitter::emit_particles.system());
         let render_app = app.sub_app_mut(0);
         render_app

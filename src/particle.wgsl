@@ -11,12 +11,25 @@ var view: View;
 [[block]] struct SizeBuffer { data: array<f32>; };
 [[block]] struct ColorBuffer { data: array<vec4<f32>>; };
 
+[[block]]
+struct ParticleMaterial {
+  flags: u32;
+};
+
+let FLAGS_BASE_COLOR_TEXTURE_BIT: u32         = 1u;
+
 [[group(1), binding(0)]]
 var<storage> positions: [[access(read)]] PositionBuffer;
 [[group(1), binding(1)]]
 var<storage> sizes: [[access(read)]] SizeBuffer;
 [[group(1), binding(2)]]
 var<storage> colors: [[access(read)]] ColorBuffer;
+[[group(2), binding(0)]]
+var material: ParticleMaterial;
+[[group(2), binding(1)]]
+var base_color_texture: texture_2d<f32>;
+[[group(2), binding(2)]]
+var base_color_sampler: sampler;
 
 struct VertexInput {
   [[builtin(vertex_index)]] vertex_idx: u32;
@@ -84,5 +97,9 @@ fn vs_main(model: VertexInput) -> VertexOutput {
 
 [[stage(fragment)]]
 fn fs_main(in: VertexOutput) -> [[location(0)]] vec4<f32> {
-  return in.color;
+  var output_color: vec4<f32> = in.color;
+  if ((material.flags & FLAGS_BASE_COLOR_TEXTURE_BIT) != 0u) {
+      output_color = output_color * textureSample(base_color_texture, base_color_sampler, in.uv);
+  }
+  return output_color;
 }
