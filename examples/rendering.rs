@@ -1,6 +1,7 @@
 use bevy::{prelude::*, render2::camera::PerspectiveCameraBundle, PipelinedDefaultPlugins};
 use bevy_prototype_particles::*;
 use rand::Rng;
+use std::time::Duration;
 
 fn create_scene(mut commands: Commands) {
     // camera
@@ -15,34 +16,7 @@ fn create_particles(
     mut materials: ResMut<Assets<ParticleMaterial>>,
     asset_server: Res<AssetServer>,
 ) {
-    const PARTICLE_COUNT: usize = 100000;
-    let mut rng = rand::thread_rng();
-    let mut particles = Particles::new(PARTICLE_COUNT);
-    for _ in 0..PARTICLE_COUNT {
-        particles.spawn(ParticleParams {
-            position: Vec3::from((
-                rng.gen_range(-1.0..1.0),
-                rng.gen_range(-1.0..1.0),
-                rng.gen_range(-1.0..1.0),
-            )),
-            rotation: 10.0,
-            angular_velocity: rng.gen_range(-1.0..1.0),
-            color: Color::rgba(
-                rng.gen_range(0.0..1.0),
-                rng.gen_range(0.0..1.0),
-                rng.gen_range(0.0..1.0),
-                rng.gen_range(0.0..0.25),
-            ),
-            size: rng.gen_range(0.1..0.15),
-            velocity: Vec3::from((
-                rng.gen_range(-1.0..1.0),
-                rng.gen_range(-1.0..1.0),
-                rng.gen_range(-1.0..1.0),
-            )) * rng.gen_range(0.0..3.0),
-            lifetime: rng.gen_range(1.0..1000.0),
-            ..Default::default()
-        });
-    }
+    let mut particles = Particles::new(1000);
     commands
         .spawn()
         .insert(particles)
@@ -50,8 +24,25 @@ fn create_particles(
             base_color_texture: Some(asset_server.load("icon.png")),
         }))
         .insert(modifiers::ConstantForce {
-            acceleration_per_second: Vec3::from((0.0, 1.0, 0.0))
-        });
+            acceleration_per_second: Vec3::from((0.0, 1.0, 0.0)),
+        })
+        .insert(Transform {
+            translation: Vec3::from((0.0, -1.0, 0.0)),
+            ..Default::default()
+        })
+        .insert(GlobalTransform::default())
+        .insert(
+            ParticleEmitter::hemisphere(Vec3::ZERO, 1.0)
+                .add_burst(EmitterBurst {
+                    count: 50..100,
+                    wait: Duration::from_millis(100),
+                })
+                .with_default_color(Color::rgba(0.5, 0.0, 0.0, 0.1))
+                .with_default_lifetime(2.0)
+                .with_default_speed(0.3)
+                .with_default_size(0.2)
+                .build(),
+        );
 }
 
 fn main() {

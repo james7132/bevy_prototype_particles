@@ -26,9 +26,9 @@ pub struct ParticlePlugin;
 impl Plugin for ParticlePlugin {
     fn build(&self, app: &mut App) {
         app.add_plugin(ParticleMaterialPlugin)
-           .add_system(particles::update_particles.system().label(PARTICLE_UPDATE))
-           .add_system(emitter::emit_particles.system().after(PARTICLE_UPDATE))
-           .register_particle_modifier::<ConstantForce>();
+            .add_system(particles::update_particles.system().label(PARTICLE_UPDATE))
+            .add_system(emitter::emit_particles.system().after(PARTICLE_UPDATE))
+            .register_particle_modifier::<ConstantForce>();
 
         let render_app = app.sub_app_mut(0);
         render_app
@@ -52,8 +52,6 @@ impl Plugin for ParticlePlugin {
         graph
             .add_node_edge("particles", core_pipeline::node::MAIN_PASS_DEPENDENCIES)
             .unwrap();
-
-        bevy::log::info!("TEST");
     }
 }
 
