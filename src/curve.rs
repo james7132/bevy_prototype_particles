@@ -1,3 +1,4 @@
+#[derive(Debug, Clone)]
 pub enum MinMaxCurve {
     Constant(f32),
     Curve(Curve),
@@ -19,6 +20,7 @@ impl MinMaxCurve {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct Curve {}
 
 impl Curve {

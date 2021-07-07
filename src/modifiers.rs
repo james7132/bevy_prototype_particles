@@ -1,4 +1,11 @@
 use crate::curve::MinMaxCurve;
+use crate::Particles;
+use bevy::{core::Time, ecs::prelude::*, math::*, tasks::ComputeTaskPool};
+use std::ops::Range;
+
+pub trait ParticleModifier: Send + Sync + 'static {
+    fn apply(&self, particles: &mut Particles, delta_time: f32);
+}
 
 #[derive(Debug, Clone)]
 pub struct ColorBySpeed {
@@ -14,20 +21,33 @@ pub struct ColorByLifetime {
 #[derive(Debug, Clone)]
 pub struct ForceOverLifetime {
     // space: SimulationSpace,
-    pub x: MinMaxCurve,
-    pub y: MinMaxCurve,
-    pub z: MinMaxCurve,
+    x: MinMaxCurve,
+    y: MinMaxCurve,
+    z: MinMaxCurve,
+}
+
+#[derive(Debug, Clone)]
+pub struct ConstantForce {
+    pub acceleration_per_second: Vec3,
+}
+
+impl ParticleModifier for ConstantForce {
+    fn apply(&self, particles: &mut Particles, delta_time: f32) {
+        let delta_velocity = Vec4::from((self.acceleration_per_second, 0.0)) * delta_time;
+        for velocity in particles.velocities.iter_mut() {
+            *velocity += delta_velocity;
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
 pub struct LifetimeByEmitterSpeed {
-    pub curve: MinMaxCurve,
+    curve: MinMaxCurve,
     pub range: Range<f32>,
 }
 
 #[derive(Debug, Clone)]
-pub struct LimitVelocityOverLifetime {
-}
+pub struct LimitVelocityOverLifetime {}
 
 #[derive(Debug, Clone)]
 pub struct Noise {}
@@ -37,13 +57,13 @@ pub enum RotationBySpeed {
     ZOnly {
         curve: MinMaxCurve,
         range: Range<f32>,
-    }
+    },
     AllAxes {
         x: MinMaxCurve,
         y: MinMaxCurve,
         z: MinMaxCurve,
         range: Range<f32>,
-    }
+    },
 }
 
 #[derive(Debug, Clone)]
@@ -51,38 +71,31 @@ pub enum RotationOverLifetime {
     ZOnly {
         curve: MinMaxCurve,
         range: Range<f32>,
-    }
+    },
     AllAxes {
         x: MinMaxCurve,
         y: MinMaxCurve,
         z: MinMaxCurve,
         range: Range<f32>,
-    }
+    },
 }
 
 #[derive(Debug, Clone)]
-pub struct SizeBySpeed {
-    pub curve: MinMaxCurve,
-    pub range: Range<f32>,
-}
+pub struct SizeBySpeed {}
 
 #[derive(Debug, Clone)]
-pub struct SizeOverLifetime {
-    pub curve: MinMaxCurve,
-}
+pub struct SizeOverLifetime {}
 
 #[derive(Debug, Clone)]
 pub struct VelocityOverLifetime {}
 
-pub fn size_over_lifetime(
+pub fn apply_particle_modifier<T: ParticleModifier>(
     compute_task_pool: Res<ComputeTaskPool>,
-    particles: Query<(&SizeOverLifetime, &mut Particles)>,
+    time: Res<Time>,
+    mut particles: Query<(&T, &mut Particles)>,
 ) {
-    particles.par_for_each(&compute_task_pool, 8, |(module, mut particles)| {
-        for idx in 0..particles.len() {
-            let ratio = particles.lifetime_ratio(idx);
-            particles.speeds[idx] = module.curve.evaluate(ratio, 1.0);
-        }
+    let delta_time = time.delta_seconds_f64() as f32;
+    particles.par_for_each_mut(&compute_task_pool, 8, |(modifier, mut particles)| {
+        modifier.apply(&mut particles, delta_time);
     });
 }
-

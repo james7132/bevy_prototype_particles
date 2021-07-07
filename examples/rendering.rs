@@ -48,7 +48,10 @@ fn create_particles(
         .insert(particles)
         .insert(materials.add(ParticleMaterial {
             base_color_texture: Some(asset_server.load("icon.png")),
-        }));
+        }))
+        .insert(modifiers::ConstantForce {
+            acceleration_per_second: Vec3::from((0.0, 1.0, 0.0))
+        });
 }
 
 fn main() {

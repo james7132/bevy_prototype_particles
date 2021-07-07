@@ -30,7 +30,7 @@ pub enum EmitterShape {
 }
 
 impl EmitterShape {
-    fn sample(&self, rng: &mut impl Rng) -> ParticleParams {
+    pub fn sample(&self, rng: &mut impl Rng) -> ParticleParams {
         match self {
             Self::Sphere { radius, center } => Self::sample_sphere(*center, *radius, rng),
             Self::Hemisphere { radius, center } => Self::sample_hemisphere(*center, *radius, rng),
