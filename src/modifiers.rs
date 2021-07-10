@@ -1,6 +1,14 @@
-use crate::curve::MinMaxCurve;
 use crate::Particles;
-use bevy::{core::Time, ecs::prelude::*, math::*, tasks::ComputeTaskPool};
+use bevy::{
+    core::Time,
+    ecs::prelude::*,
+    math::{
+        curves::{Curve, CurveFixed},
+        interpolation::Lerp,
+        *,
+    },
+    tasks::ComputeTaskPool,
+};
 use std::ops::Range;
 
 pub trait ParticleModifier: Send + Sync + 'static {
@@ -9,21 +17,30 @@ pub trait ParticleModifier: Send + Sync + 'static {
 
 #[derive(Debug, Clone)]
 pub struct ColorBySpeed {
-    // color: Curve<Color>,
+    pub color: CurveFixed<Vec4>,
     pub range: Range<f32>,
 }
 
 #[derive(Debug, Clone)]
 pub struct ColorByLifetime {
-    // color: Curve<Color>,
+    pub color: CurveFixed<Vec4>,
+}
+
+impl ParticleModifier for ColorByLifetime {
+    fn apply(&self, particles: &mut Particles, _: f32) {
+        for idx in 0..particles.len() {
+            // SAFE: idx is always a valid particle index.
+            unsafe {
+                let lifetime = particles.lifetime_ratio(idx);
+                *particles.colors.get_unchecked_mut(idx) = self.color.sample(lifetime);
+            }
+        }
+    }
 }
 
 #[derive(Debug, Clone)]
 pub struct ForceOverLifetime {
-    // space: SimulationSpace,
-    x: MinMaxCurve,
-    y: MinMaxCurve,
-    z: MinMaxCurve,
+    pub force: CurveFixed<Range<Vec3>>,
 }
 
 #[derive(Debug, Clone)]
@@ -42,7 +59,7 @@ impl ParticleModifier for ConstantForce {
 
 #[derive(Debug, Clone)]
 pub struct LifetimeByEmitterSpeed {
-    curve: MinMaxCurve,
+    pub lifetime: CurveFixed<Range<f32>>,
     pub range: Range<f32>,
 }
 
@@ -53,38 +70,41 @@ pub struct LimitVelocityOverLifetime {}
 pub struct Noise {}
 
 #[derive(Debug, Clone)]
-pub enum RotationBySpeed {
-    ZOnly {
-        curve: MinMaxCurve,
-        range: Range<f32>,
-    },
-    AllAxes {
-        x: MinMaxCurve,
-        y: MinMaxCurve,
-        z: MinMaxCurve,
-        range: Range<f32>,
-    },
+pub struct RotationBySpeed {
+    pub curve: CurveFixed<Range<f32>>,
+    pub range: Range<f32>,
 }
 
 #[derive(Debug, Clone)]
-pub enum RotationOverLifetime {
-    ZOnly {
-        curve: MinMaxCurve,
-        range: Range<f32>,
-    },
-    AllAxes {
-        x: MinMaxCurve,
-        y: MinMaxCurve,
-        z: MinMaxCurve,
-        range: Range<f32>,
-    },
+pub struct RotationOverLifetime {
+    pub rotation: CurveFixed<Range<f32>>,
 }
 
 #[derive(Debug, Clone)]
-pub struct SizeBySpeed {}
+pub struct SizeBySpeed {
+    pub size: CurveFixed<Range<f32>>,
+    pub range: Range<f32>,
+}
 
 #[derive(Debug, Clone)]
-pub struct SizeOverLifetime {}
+pub struct SizeOverLifetime {
+    pub size: CurveFixed<Range<f32>>,
+}
+
+impl ParticleModifier for SizeOverLifetime {
+    fn apply(&self, particles: &mut Particles, delta_time: f32) {
+        for idx in 0..particles.len() {
+            // SAFE: idx is always a valid particle index.
+            unsafe {
+                let lifetime = particles.lifetime_ratio(idx);
+                let range = self.size.sample(lifetime);
+                let lerp_factor = particles.lerp_factors.get_unchecked(idx);
+                *particles.sizes.get_unchecked_mut(idx) =
+                    f32::lerp_unclamped(&range.start, &range.end, *lerp_factor);
+            }
+        }
+    }
+}
 
 #[derive(Debug, Clone)]
 pub struct VelocityOverLifetime {}

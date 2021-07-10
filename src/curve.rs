@@ -1,30 +1,27 @@
-#[derive(Debug, Clone)]
-pub enum MinMaxCurve {
-    Constant(f32),
-    Curve(Curve),
-    RangeCurve { min: Curve, max: Curve },
+use bevy::math::{curves::CurveFixed, interpolation::Lerp};
+use std::ops::Range;
+
+#[inline]
+pub fn from_constant<T: Lerp + Clone>(value: T) -> CurveFixed<Range<T>> {
+    from_range(value.clone()..value.clone())
 }
 
-impl MinMaxCurve {
-    pub fn evaluate(&self, time: f32, lerp_factor: f32) -> f32 {
-        match self {
-            Self::Constant(value) => *value,
-            Self::Curve(curve) => curve.evaluate(time),
-            Self::RangeCurve { min, max } => {
-                // TODO(james7132): Use the Lerp trait when available
-                let min = min.evaluate(time);
-                let max = max.evaluate(time);
-                (lerp_factor * (max - min)) + min
-            }
-        }
-    }
+#[inline]
+pub fn from_range<T: Lerp + Clone>(value: Range<T>) -> CurveFixed<Range<T>> {
+    from_vec(vec![value])
 }
 
-#[derive(Debug, Clone)]
-pub struct Curve {}
+#[inline]
+pub fn from_constant_vec<T: Lerp + Clone>(keyframes: Vec<T>) -> CurveFixed<Range<T>> {
+    from_vec(
+        keyframes
+            .into_iter()
+            .map(|value| value.clone()..value.clone())
+            .collect(),
+    )
+}
 
-impl Curve {
-    pub fn evaluate(&self, time: f32) -> f32 {
-        0.0
-    }
+#[inline]
+pub fn from_vec<T: Lerp>(keyframes: Vec<T>) -> CurveFixed<T> {
+    CurveFixed::from_keyframes(keyframes.len() as f32, 0, keyframes)
 }

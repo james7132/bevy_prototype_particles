@@ -1,4 +1,5 @@
 use bevy::{prelude::*, render::color::Color, tasks::ComputeTaskPool};
+use rand::{rngs::SmallRng, Rng, SeedableRng};
 
 #[derive(Debug, Default, Clone)]
 pub struct ParticleParams {
@@ -29,7 +30,7 @@ pub struct ParticleMut<'a> {
     // pub lifetime: &'a mut f32,
 }
 
-#[derive(Default, Clone)]
+#[derive(Clone)]
 /// A container component for a batch of particles.
 pub struct Particles {
     pub(crate) capacity: usize,
@@ -41,9 +42,12 @@ pub struct Particles {
     // X, Y, Z - world coordinates
     // W - 1D rotation
     pub(crate) velocities: Vec<Vec4>,
+    pub(crate) lerp_factors: Vec<f32>,
     pub(crate) sizes: Vec<f32>,
     pub(crate) starts: Vec<f32>,
     pub(crate) expirations: Vec<f32>,
+    // TODO(james7132): make this user initializable.
+    rng: SmallRng,
 }
 
 impl Particles {
@@ -55,8 +59,10 @@ impl Particles {
             colors: Vec::with_capacity(capacity),
             velocities: Vec::with_capacity(capacity),
             sizes: Vec::with_capacity(capacity),
+            lerp_factors: Vec::with_capacity(capacity),
             starts: Vec::with_capacity(capacity),
             expirations: Vec::with_capacity(capacity),
+            rng: SmallRng::from_entropy(),
         }
     }
 
@@ -98,6 +104,7 @@ impl Particles {
             .push(Vec4::from((params.velocity, params.angular_velocity)));
         self.colors.push(params.color.as_rgba_f32().into());
         self.sizes.push(params.size);
+        self.lerp_factors.push(self.rng.gen_range(0.0..1.0));
         self.starts.push(self.lifetime);
         self.expirations.push(self.lifetime + params.lifetime);
     }
@@ -119,6 +126,7 @@ impl Particles {
         self.velocities.extend(batch.velocities);
         self.colors.extend(batch.colors);
         self.sizes.extend(batch.sizes);
+        self.lerp_factors.extend(batch.lerp_factors);
         self.starts.extend(batch.starts);
         self.expirations.extend(batch.expirations);
     }
@@ -148,6 +156,7 @@ impl Particles {
     pub fn reserve(&mut self, capacity: usize) {
         self.positions.reserve(capacity);
         self.sizes.reserve(capacity);
+        self.lerp_factors.reserve(capacity);
         self.velocities.reserve(capacity);
         self.colors.reserve(capacity);
         self.starts.reserve(capacity);
@@ -158,6 +167,7 @@ impl Particles {
         self.lifetime = 0.0;
         self.positions.clear();
         self.sizes.clear();
+        self.lerp_factors.clear();
         self.velocities.clear();
         self.colors.clear();
         self.starts.clear();
@@ -166,9 +176,12 @@ impl Particles {
 
     /// Gets a ratio of how much of a particle's lifetime has passed. Will be 0.0 when the
     /// particle is newly spawned, and 1.0 or greater when the particle is about to be killed.
-    pub fn lifetime_ratio(&self, idx: usize) -> f32 {
-        let start = self.starts[idx];
-        let end = self.expirations[idx];
+    ///
+    /// # Safety
+    /// `idx` must be a particle index, no bounds checking is done here.
+    pub unsafe fn lifetime_ratio(&self, idx: usize) -> f32 {
+        let start = self.starts.get_unchecked(idx);
+        let end = self.expirations.get_unchecked(idx);
         (self.lifetime - start) / (end - start)
     }
 
@@ -212,6 +225,8 @@ impl Particles {
         *self.velocities.get_unchecked_mut(idx) = *self.velocities.get_unchecked(end);
         *self.colors.get_unchecked_mut(idx) = *self.colors.get_unchecked(end);
         *self.sizes.get_unchecked_mut(idx) = *self.sizes.get_unchecked(end);
+        *self.lerp_factors.get_unchecked_mut(idx) = *self.lerp_factors.get_unchecked(end);
+        *self.starts.get_unchecked_mut(idx) = *self.starts.get_unchecked(end);
         *self.expirations.get_unchecked_mut(idx) = *self.expirations.get_unchecked(end);
     }
 
@@ -221,6 +236,8 @@ impl Particles {
         self.velocities.set_len(len);
         self.colors.set_len(len);
         self.sizes.set_len(len);
+        self.lerp_factors.set_len(len);
+        self.starts.set_len(len);
         self.expirations.set_len(len);
     }
 }

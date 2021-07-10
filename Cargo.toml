@@ -6,7 +6,7 @@ edition = "2018"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
-rand = "0.8"
+rand = { version = "0.8", features = ["small_rng"] }
 wgpu = "0.9"
 wgpu-types = "0.9"
 bytemuck = { version = "1.7.0", features = ["derive"] }
@@ -17,17 +17,17 @@ opt-level = 3
 
 [dependencies.bevy]
 git = "https://github.com/james7132/bevy"
-branch = "buffer-vec-fix"
+branch = "particles"
 default-features = false
 features = ["render", "bevy_render2"]
 
 [dependencies.crevice]
 git = "https://github.com/james7132/bevy"
-branch = "buffer-vec-fix"
+branch = "particles"
 
 [dev-dependencies.bevy]
 git = "https://github.com/james7132/bevy"
-branch = "buffer-vec-fix"
+branch = "particles"
 default-features = true
 features = ["render", "bevy_render2"]
 

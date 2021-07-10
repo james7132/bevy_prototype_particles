@@ -113,9 +113,9 @@ dependencies = [
 
 [[package]]
 name = "anyhow"
-version = "1.0.41"
+version = "1.0.42"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "15af2628f6890fe2609a3b91bef4c83450512802e59489f9c1cb1fa5df064a61"
+checksum = "595d3cfa7a60d4555cb5067b99f07142a08ea778de5cf993f7b75c7d8fabc486"
 
 [[package]]
 name = "approx"
@@ -193,7 +193,7 @@ checksum = "904dfeac50f3cdaba28fc6f57fdcddb75f49ed61346676a78c4ffe55877802fd"
 [[package]]
 name = "bevy"
 version = "0.5.0"
-source = "git+https://github.com/james7132/bevy?branch=buffer-vec-fix#d41fb33f1f18ee3c731b96a5535da141f71f2c0c"
+source = "git+https://github.com/james7132/bevy?branch=particles#99b0a24de44e20de8d311425515e7ade0771ff12"
 dependencies = [
  "bevy_internal",
 ]
@@ -207,7 +207,7 @@ checksum = "0d5f2f58f0aec3c50a20799792c3705e80dd7df327e79791cacec197e84e5e61"
 [[package]]
 name = "bevy_app"
 version = "0.5.0"
-source = "git+https://github.com/james7132/bevy?branch=buffer-vec-fix#d41fb33f1f18ee3c731b96a5535da141f71f2c0c"
+source = "git+https://github.com/james7132/bevy?branch=particles#99b0a24de44e20de8d311425515e7ade0771ff12"
 dependencies = [
  "bevy_derive",
  "bevy_ecs",
@@ -221,13 +221,14 @@ dependencies = [
 [[package]]
 name = "bevy_asset"
 version = "0.5.0"
-source = "git+https://github.com/james7132/bevy?branch=buffer-vec-fix#d41fb33f1f18ee3c731b96a5535da141f71f2c0c"
+source = "git+https://github.com/james7132/bevy?branch=particles#99b0a24de44e20de8d311425515e7ade0771ff12"
 dependencies = [
  "anyhow",
  "bevy_app",
  "bevy_diagnostic",
  "bevy_ecs",
  "bevy_log",
+ "bevy_math",
  "bevy_reflect",
  "bevy_tasks",
  "bevy_utils",
@@ -249,7 +250,7 @@ dependencies = [
 [[package]]
 name = "bevy_audio"
 version = "0.5.0"
-source = "git+https://github.com/james7132/bevy?branch=buffer-vec-fix#d41fb33f1f18ee3c731b96a5535da141f71f2c0c"
+source = "git+https://github.com/james7132/bevy?branch=particles#99b0a24de44e20de8d311425515e7ade0771ff12"
 dependencies = [
  "anyhow",
  "bevy_app",
@@ -264,7 +265,7 @@ dependencies = [
 [[package]]
 name = "bevy_core"
 version = "0.5.0"
-source = "git+https://github.com/james7132/bevy?branch=buffer-vec-fix#d41fb33f1f18ee3c731b96a5535da141f71f2c0c"
+source = "git+https://github.com/james7132/bevy?branch=particles#99b0a24de44e20de8d311425515e7ade0771ff12"
 dependencies = [
  "bevy_app",
  "bevy_derive",
@@ -279,7 +280,7 @@ dependencies = [
 [[package]]
 name = "bevy_derive"
 version = "0.5.0"
-source = "git+https://github.com/james7132/bevy?branch=buffer-vec-fix#d41fb33f1f18ee3c731b96a5535da141f71f2c0c"
+source = "git+https://github.com/james7132/bevy?branch=particles#99b0a24de44e20de8d311425515e7ade0771ff12"
 dependencies = [
  "Inflector",
  "bevy_macro_utils",
@@ -291,7 +292,7 @@ dependencies = [
 [[package]]
 name = "bevy_diagnostic"
 version = "0.5.0"
-source = "git+https://github.com/james7132/bevy?branch=buffer-vec-fix#d41fb33f1f18ee3c731b96a5535da141f71f2c0c"
+source = "git+https://github.com/james7132/bevy?branch=particles#99b0a24de44e20de8d311425515e7ade0771ff12"
 dependencies = [
  "bevy_app",
  "bevy_core",
@@ -304,7 +305,7 @@ dependencies = [
 [[package]]
 name = "bevy_dynamic_plugin"
 version = "0.5.0"
-source = "git+https://github.com/james7132/bevy?branch=buffer-vec-fix#d41fb33f1f18ee3c731b96a5535da141f71f2c0c"
+source = "git+https://github.com/james7132/bevy?branch=particles#99b0a24de44e20de8d311425515e7ade0771ff12"
 dependencies = [
  "bevy_app",
  "libloading",
@@ -313,7 +314,7 @@ dependencies = [
 [[package]]
 name = "bevy_ecs"
 version = "0.5.0"
-source = "git+https://github.com/james7132/bevy?branch=buffer-vec-fix#d41fb33f1f18ee3c731b96a5535da141f71f2c0c"
+source = "git+https://github.com/james7132/bevy?branch=particles#99b0a24de44e20de8d311425515e7ade0771ff12"
 dependencies = [
  "async-channel",
  "bevy_ecs_macros",
@@ -333,7 +334,7 @@ dependencies = [
 [[package]]
 name = "bevy_ecs_macros"
 version = "0.5.0"
-source = "git+https://github.com/james7132/bevy?branch=buffer-vec-fix#d41fb33f1f18ee3c731b96a5535da141f71f2c0c"
+source = "git+https://github.com/james7132/bevy?branch=particles#99b0a24de44e20de8d311425515e7ade0771ff12"
 dependencies = [
  "bevy_macro_utils",
  "proc-macro2",
@@ -344,7 +345,7 @@ dependencies = [
 [[package]]
 name = "bevy_gilrs"
 version = "0.5.0"
-source = "git+https://github.com/james7132/bevy?branch=buffer-vec-fix#d41fb33f1f18ee3c731b96a5535da141f71f2c0c"
+source = "git+https://github.com/james7132/bevy?branch=particles#99b0a24de44e20de8d311425515e7ade0771ff12"
 dependencies = [
  "bevy_app",
  "bevy_ecs",
@@ -356,7 +357,7 @@ dependencies = [
 [[package]]
 name = "bevy_gltf"
 version = "0.5.0"
-source = "git+https://github.com/james7132/bevy?branch=buffer-vec-fix#d41fb33f1f18ee3c731b96a5535da141f71f2c0c"
+source = "git+https://github.com/james7132/bevy?branch=particles#99b0a24de44e20de8d311425515e7ade0771ff12"
 dependencies = [
  "anyhow",
  "base64",
@@ -379,7 +380,7 @@ dependencies = [
 [[package]]
 name = "bevy_input"
 version = "0.5.0"
-source = "git+https://github.com/james7132/bevy?branch=buffer-vec-fix#d41fb33f1f18ee3c731b96a5535da141f71f2c0c"
+source = "git+https://github.com/james7132/bevy?branch=particles#99b0a24de44e20de8d311425515e7ade0771ff12"
 dependencies = [
  "bevy_app",
  "bevy_ecs",
@@ -390,7 +391,7 @@ dependencies = [
 [[package]]
 name = "bevy_internal"
 version = "0.5.0"
-source = "git+https://github.com/james7132/bevy?branch=buffer-vec-fix#d41fb33f1f18ee3c731b96a5535da141f71f2c0c"
+source = "git+https://github.com/james7132/bevy?branch=particles#99b0a24de44e20de8d311425515e7ade0771ff12"
 dependencies = [
  "bevy_app",
  "bevy_asset",
@@ -427,7 +428,7 @@ dependencies = [
 [[package]]
 name = "bevy_log"
 version = "0.5.0"
-source = "git+https://github.com/james7132/bevy?branch=buffer-vec-fix#d41fb33f1f18ee3c731b96a5535da141f71f2c0c"
+source = "git+https://github.com/james7132/bevy?branch=particles#99b0a24de44e20de8d311425515e7ade0771ff12"
 dependencies = [
  "android_log-sys 0.2.0",
  "bevy_app",
@@ -441,7 +442,7 @@ dependencies = [
 [[package]]
 name = "bevy_macro_utils"
 version = "0.5.0"
-source = "git+https://github.com/james7132/bevy?branch=buffer-vec-fix#d41fb33f1f18ee3c731b96a5535da141f71f2c0c"
+source = "git+https://github.com/james7132/bevy?branch=particles#99b0a24de44e20de8d311425515e7ade0771ff12"
 dependencies = [
  "cargo-manifest",
  "proc-macro2",
@@ -451,16 +452,17 @@ dependencies = [
 [[package]]
 name = "bevy_math"
 version = "0.5.0"
-source = "git+https://github.com/james7132/bevy?branch=buffer-vec-fix#d41fb33f1f18ee3c731b96a5535da141f71f2c0c"
+source = "git+https://github.com/james7132/bevy?branch=particles#99b0a24de44e20de8d311425515e7ade0771ff12"
 dependencies = [
  "bevy_reflect",
  "glam",
+ "thiserror",
 ]
 
 [[package]]
 name = "bevy_pbr"
 version = "0.5.0"
-source = "git+https://github.com/james7132/bevy?branch=buffer-vec-fix#d41fb33f1f18ee3c731b96a5535da141f71f2c0c"
+source = "git+https://github.com/james7132/bevy?branch=particles#99b0a24de44e20de8d311425515e7ade0771ff12"
 dependencies = [
  "bevy_app",
  "bevy_asset",
@@ -478,7 +480,7 @@ dependencies = [
 [[package]]
 name = "bevy_pbr2"
 version = "0.5.0"
-source = "git+https://github.com/james7132/bevy?branch=buffer-vec-fix#d41fb33f1f18ee3c731b96a5535da141f71f2c0c"
+source = "git+https://github.com/james7132/bevy?branch=particles#99b0a24de44e20de8d311425515e7ade0771ff12"
 dependencies = [
  "bevy_app",
  "bevy_asset",
@@ -511,7 +513,7 @@ dependencies = [
 [[package]]
 name = "bevy_reflect"
 version = "0.5.0"
-source = "git+https://github.com/james7132/bevy?branch=buffer-vec-fix#d41fb33f1f18ee3c731b96a5535da141f71f2c0c"
+source = "git+https://github.com/james7132/bevy?branch=particles#99b0a24de44e20de8d311425515e7ade0771ff12"
 dependencies = [
  "bevy_reflect_derive",
  "bevy_utils",
@@ -527,7 +529,7 @@ dependencies = [
 [[package]]
 name = "bevy_reflect_derive"
 version = "0.5.0"
-source = "git+https://github.com/james7132/bevy?branch=buffer-vec-fix#d41fb33f1f18ee3c731b96a5535da141f71f2c0c"
+source = "git+https://github.com/james7132/bevy?branch=particles#99b0a24de44e20de8d311425515e7ade0771ff12"
 dependencies = [
  "bevy_macro_utils",
  "proc-macro2",
@@ -539,7 +541,7 @@ dependencies = [
 [[package]]
 name = "bevy_render"
 version = "0.5.0"
-source = "git+https://github.com/james7132/bevy?branch=buffer-vec-fix#d41fb33f1f18ee3c731b96a5535da141f71f2c0c"
+source = "git+https://github.com/james7132/bevy?branch=particles#99b0a24de44e20de8d311425515e7ade0771ff12"
 dependencies = [
  "anyhow",
  "bevy-glsl-to-spirv",
@@ -556,7 +558,7 @@ dependencies = [
  "bitflags",
  "downcast-rs",
  "hex",
- "hexasphere",
+ "hexasphere 4.0.0",
  "image",
  "once_cell",
  "parking_lot",
@@ -570,7 +572,7 @@ dependencies = [
 [[package]]
 name = "bevy_render2"
 version = "0.5.0"
-source = "git+https://github.com/james7132/bevy?branch=buffer-vec-fix#d41fb33f1f18ee3c731b96a5535da141f71f2c0c"
+source = "git+https://github.com/james7132/bevy?branch=particles#99b0a24de44e20de8d311425515e7ade0771ff12"
 dependencies = [
  "anyhow",
  "bevy_app",
@@ -588,7 +590,7 @@ dependencies = [
  "downcast-rs",
  "futures-lite",
  "hex",
- "hexasphere",
+ "hexasphere 3.4.0",
  "image",
  "naga 0.5.0 (git+https://github.com/gfx-rs/naga?rev=0cf5484bba530f1134badbd2a1c1a8e9daf2e9c3)",
  "once_cell",
@@ -602,7 +604,7 @@ dependencies = [
 [[package]]
 name = "bevy_scene"
 version = "0.5.0"
-source = "git+https://github.com/james7132/bevy?branch=buffer-vec-fix#d41fb33f1f18ee3c731b96a5535da141f71f2c0c"
+source = "git+https://github.com/james7132/bevy?branch=particles#99b0a24de44e20de8d311425515e7ade0771ff12"
 dependencies = [
  "anyhow",
  "bevy_app",
@@ -621,7 +623,7 @@ dependencies = [
 [[package]]
 name = "bevy_sprite"
 version = "0.5.0"
-source = "git+https://github.com/james7132/bevy?branch=buffer-vec-fix#d41fb33f1f18ee3c731b96a5535da141f71f2c0c"
+source = "git+https://github.com/james7132/bevy?branch=particles#99b0a24de44e20de8d311425515e7ade0771ff12"
 dependencies = [
  "bevy_app",
  "bevy_asset",
@@ -644,7 +646,7 @@ dependencies = [
 [[package]]
 name = "bevy_sprite2"
 version = "0.5.0"
-source = "git+https://github.com/james7132/bevy?branch=buffer-vec-fix#d41fb33f1f18ee3c731b96a5535da141f71f2c0c"
+source = "git+https://github.com/james7132/bevy?branch=particles#99b0a24de44e20de8d311425515e7ade0771ff12"
 dependencies = [
  "bevy_app",
  "bevy_asset",
@@ -664,7 +666,7 @@ dependencies = [
 [[package]]
 name = "bevy_tasks"
 version = "0.5.0"
-source = "git+https://github.com/james7132/bevy?branch=buffer-vec-fix#d41fb33f1f18ee3c731b96a5535da141f71f2c0c"
+source = "git+https://github.com/james7132/bevy?branch=particles#99b0a24de44e20de8d311425515e7ade0771ff12"
 dependencies = [
  "async-channel",
  "async-executor",
@@ -678,7 +680,7 @@ dependencies = [
 [[package]]
 name = "bevy_text"
 version = "0.5.0"
-source = "git+https://github.com/james7132/bevy?branch=buffer-vec-fix#d41fb33f1f18ee3c731b96a5535da141f71f2c0c"
+source = "git+https://github.com/james7132/bevy?branch=particles#99b0a24de44e20de8d311425515e7ade0771ff12"
 dependencies = [
  "ab_glyph",
  "anyhow",
@@ -700,7 +702,7 @@ dependencies = [
 [[package]]
 name = "bevy_transform"
 version = "0.5.0"
-source = "git+https://github.com/james7132/bevy?branch=buffer-vec-fix#d41fb33f1f18ee3c731b96a5535da141f71f2c0c"
+source = "git+https://github.com/james7132/bevy?branch=particles#99b0a24de44e20de8d311425515e7ade0771ff12"
 dependencies = [
  "bevy_app",
  "bevy_ecs",
@@ -713,7 +715,7 @@ dependencies = [
 [[package]]
 name = "bevy_ui"
 version = "0.5.0"
-source = "git+https://github.com/james7132/bevy?branch=buffer-vec-fix#d41fb33f1f18ee3c731b96a5535da141f71f2c0c"
+source = "git+https://github.com/james7132/bevy?branch=particles#99b0a24de44e20de8d311425515e7ade0771ff12"
 dependencies = [
  "bevy_app",
  "bevy_asset",
@@ -738,7 +740,7 @@ dependencies = [
 [[package]]
 name = "bevy_utils"
 version = "0.5.0"
-source = "git+https://github.com/james7132/bevy?branch=buffer-vec-fix#d41fb33f1f18ee3c731b96a5535da141f71f2c0c"
+source = "git+https://github.com/james7132/bevy?branch=particles#99b0a24de44e20de8d311425515e7ade0771ff12"
 dependencies = [
  "ahash 0.7.4",
  "bevy_derive",
@@ -751,7 +753,7 @@ dependencies = [
 [[package]]
 name = "bevy_wgpu"
 version = "0.5.0"
-source = "git+https://github.com/james7132/bevy?branch=buffer-vec-fix#d41fb33f1f18ee3c731b96a5535da141f71f2c0c"
+source = "git+https://github.com/james7132/bevy?branch=particles#99b0a24de44e20de8d311425515e7ade0771ff12"
 dependencies = [
  "bevy_app",
  "bevy_asset",
@@ -772,7 +774,7 @@ dependencies = [
 [[package]]
 name = "bevy_window"
 version = "0.5.0"
-source = "git+https://github.com/james7132/bevy?branch=buffer-vec-fix#d41fb33f1f18ee3c731b96a5535da141f71f2c0c"
+source = "git+https://github.com/james7132/bevy?branch=particles#99b0a24de44e20de8d311425515e7ade0771ff12"
 dependencies = [
  "bevy_app",
  "bevy_ecs",
@@ -785,7 +787,7 @@ dependencies = [
 [[package]]
 name = "bevy_winit"
 version = "0.5.0"
-source = "git+https://github.com/james7132/bevy?branch=buffer-vec-fix#d41fb33f1f18ee3c731b96a5535da141f71f2c0c"
+source = "git+https://github.com/james7132/bevy?branch=particles#99b0a24de44e20de8d311425515e7ade0771ff12"
 dependencies = [
  "bevy_app",
  "bevy_ecs",
@@ -1211,7 +1213,7 @@ dependencies = [
 [[package]]
 name = "crevice"
 version = "0.6.0"
-source = "git+https://github.com/james7132/bevy?branch=buffer-vec-fix#d41fb33f1f18ee3c731b96a5535da141f71f2c0c"
+source = "git+https://github.com/james7132/bevy?branch=particles#99b0a24de44e20de8d311425515e7ade0771ff12"
 dependencies = [
  "bytemuck",
  "crevice-derive",
@@ -1222,7 +1224,7 @@ dependencies = [
 [[package]]
 name = "crevice-derive"
 version = "0.6.0"
-source = "git+https://github.com/james7132/bevy?branch=buffer-vec-fix#d41fb33f1f18ee3c731b96a5535da141f71f2c0c"
+source = "git+https://github.com/james7132/bevy?branch=particles#99b0a24de44e20de8d311425515e7ade0771ff12"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1905,6 +1907,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "hexasphere"
+version = "4.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "01ad65c2467b7da23aae13855ee8051eca73902ce2020e0887842c21ffaf8a35"
+dependencies = [
+ "glam",
+ "lazy_static",
+]
+
+[[package]]
 name = "ident_case"
 version = "1.0.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -2058,9 +2070,9 @@ checksum = "830d08ce1d1d941e6b30645f1a0eb5643013d835ce3779a5fc208261dbe10f55"
 
 [[package]]
 name = "libc"
-version = "0.2.97"
+version = "0.2.98"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "12b8adadd720df158f4d70dfe7ccc6adb0472d7c55ca83445f6a5ab3e36f8fb6"
+checksum = "320cfe77175da3a483efed4bc0adc1968ca050b098ce4f2f1c13a56626128790"
 
 [[package]]
 name = "libloading"

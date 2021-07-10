@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-mod curve;
+pub mod curve;
 mod emitter;
 mod material;
 pub mod modifiers;
@@ -28,7 +28,9 @@ impl Plugin for ParticlePlugin {
         app.add_plugin(ParticleMaterialPlugin)
             .add_system(particles::update_particles.system().label(PARTICLE_UPDATE))
             .add_system(emitter::emit_particles.system().after(PARTICLE_UPDATE))
-            .register_particle_modifier::<ConstantForce>();
+            .register_particle_modifier::<ConstantForce>()
+            .register_particle_modifier::<ColorByLifetime>()
+            .register_particle_modifier::<SizeOverLifetime>();
 
         let render_app = app.sub_app_mut(0);
         render_app

@@ -1,7 +1,4 @@
-use crate::{
-    curve::MinMaxCurve,
-    particles::{ParticleParams, Particles},
-};
+use crate::particles::{ParticleParams, Particles};
 use bevy::{prelude::*, tasks::ComputeTaskPool};
 use rand::Rng;
 use std::{ops::Range, time::Duration};

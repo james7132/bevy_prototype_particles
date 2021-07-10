@@ -23,8 +23,20 @@ fn create_particles(
         .insert(materials.add(ParticleMaterial {
             base_color_texture: Some(asset_server.load("icon.png")),
         }))
+        .insert(modifiers::ColorByLifetime {
+            color: curve::from_vec(vec![
+                Vec4::from((1.0, 1.0, 1.0, 0.5)),
+                Vec4::from((1.0, 1.0, 0.0, 0.45)),
+                Vec4::from((1.0, 0.0, 0.0, 0.4)),
+                Vec4::from((0.2, 0.0, 0.0, 0.15)),
+                Vec4::from((0.0, 0.0, 0.0, 0.0)),
+            ]),
+        })
+        .insert(modifiers::SizeOverLifetime {
+            size: curve::from_constant_vec(vec![0.3, 0.2, 0.0]),
+        })
         .insert(modifiers::ConstantForce {
-            acceleration_per_second: Vec3::from((0.0, 1.0, 0.0)),
+            acceleration_per_second: Vec3::from((0.0, 5.0, 0.0)),
         })
         .insert(Transform {
             translation: Vec3::from((0.0, -1.0, 0.0)),
