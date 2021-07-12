@@ -1,5 +1,5 @@
 use crate::particles::{ParticleParams, Particles};
-use bevy::{prelude::*, tasks::ComputeTaskPool};
+use bevy::{math::*, prelude::*, tasks::ComputeTaskPool};
 use rand::Rng;
 use std::{ops::Range, time::Duration};
 
@@ -180,6 +180,36 @@ pub fn emit_particles(
             }
         },
     );
+}
+
+pub struct TrailEmitter {
+    pub tracking: Entity,
+    pub lifetime: f32,
+}
+
+pub fn trail_particles(
+    time: Res<Time>,
+    mut particles: Query<(&mut Particles)>,
+    mut trails: Query<(Entity, &TrailEmitter)>,
+) {
+    let delta_time = time.delta();
+    for (entity, emitter) in trails.iter() {
+        if let Some(mut destination) = particles.get_mut(entity).ok() {
+            if let Some(source) = particles.get_mut(emitter.tracking).ok() {
+                for particle in source.iter() {
+                    destination.spawn(ParticleParams {
+                        position: particle.position.xyz(),
+                        rotation: particle.position.w,
+                        size: *particle.size,
+                        velocity: Vec3::ZERO,
+                        angular_velocity: 0.0,
+                        color: Color::from(*particle.color),
+                        lifetime: emitter.lifetime,
+                    });
+                }
+            }
+        }
+    }
 }
 
 /// Select one point at random on the unit sphere.

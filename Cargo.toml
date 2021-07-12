@@ -42,3 +42,7 @@ path = "examples/entities.rs"
 [[example]]
 name = "rendering"
 path = "examples/rendering.rs"
+
+[[example]]
+name = "trails"
+path = "examples/trails.rs"

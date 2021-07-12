@@ -28,6 +28,7 @@ impl Plugin for ParticlePlugin {
         app.add_plugin(ParticleMaterialPlugin)
             .add_system(particles::update_particles.system().label(PARTICLE_UPDATE))
             .add_system(emitter::emit_particles.system().after(PARTICLE_UPDATE))
+            .add_system(emitter::trail_particles.system().after(PARTICLE_UPDATE))
             .register_particle_modifier::<ConstantForce>()
             .register_particle_modifier::<ColorByLifetime>()
             .register_particle_modifier::<SizeOverLifetime>();
