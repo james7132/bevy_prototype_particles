@@ -196,7 +196,8 @@ pub fn trail_particles(
     for (entity, emitter) in trails.iter() {
         if let Some(mut destination) = particles.get_mut(entity).ok() {
             if let Some(source) = particles.get_mut(emitter.tracking).ok() {
-                destination.reserve(destination.len() + source.len());
+                let capacity = destination.len() + source.len();
+                destination.reserve(capacity);
                 for particle in source.iter() {
                     destination.spawn(ParticleParams {
                         position: particle.position.xyz(),

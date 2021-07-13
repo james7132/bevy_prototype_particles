@@ -1,6 +1,5 @@
 use bevy::{prelude::*, render2::camera::PerspectiveCameraBundle, PipelinedDefaultPlugins};
 use bevy_prototype_particles::*;
-use rand::Rng;
 use std::time::Duration;
 
 fn create_scene(mut commands: Commands) {
@@ -16,7 +15,7 @@ fn create_particles(
     mut materials: ResMut<Assets<ParticleMaterial>>,
     asset_server: Res<AssetServer>,
 ) {
-    let mut particles = Particles::new(1000);
+    let particles = Particles::new(1000);
     let source = commands
         .spawn()
         .insert(particles.clone())
@@ -61,7 +60,7 @@ fn create_particles(
         .spawn()
         .insert(particles)
         .insert(materials.add(ParticleMaterial {
-            base_color_texture: None,
+            base_color_texture: Some(asset_server.load("icon.png")),
         }))
         .insert(modifiers::SizeOverLifetime {
             size: curve::from_constant_vec(vec![0.3, 0.2, 0.0]),
