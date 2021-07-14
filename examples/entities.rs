@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 use bevy::tasks::ComputeTaskPool;
-use bevy_prototype_particles::*;
+
 use rand::Rng;
 
 fn create_scene(
@@ -51,10 +51,10 @@ fn create_particles(mut commands: Commands) {
 fn update_particles(
     time: Res<Time>,
     compute_task_pool: Res<ComputeTaskPool>,
-    mut particles: Query<(Entity, &mut Particle)>,
+    mut particles: Query<&mut Particle>,
 ) {
     let dt = time.delta_seconds_f64() as f32;
-    particles.par_for_each_mut(&compute_task_pool, 32, move |(entity, mut particle)| {
+    particles.par_for_each_mut(&compute_task_pool, 32, move |mut particle| {
         let velocity = particle.velocity * dt;
         particle.position += velocity;
         particle.lifetime -= dt;

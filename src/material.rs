@@ -3,7 +3,6 @@ use bevy::{
     asset::{AddAsset, Handle},
     reflect::TypeUuid,
     render2::{
-        color::Color,
         render_asset::{RenderAsset, RenderAssetPlugin},
         render_resource::{Buffer, BufferInitDescriptor, BufferUsage},
         renderer::{RenderDevice, RenderQueue},

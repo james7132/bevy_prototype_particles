@@ -188,11 +188,9 @@ pub struct TrailEmitter {
 }
 
 pub fn trail_particles(
-    time: Res<Time>,
-    mut particles: Query<(&mut Particles)>,
-    mut trails: Query<(Entity, &TrailEmitter)>,
+    mut particles: Query<&mut Particles>,
+    trails: Query<(Entity, &TrailEmitter)>,
 ) {
-    let delta_time = time.delta();
     for (entity, emitter) in trails.iter() {
         if let Some(mut destination) = particles.get_mut(entity).ok() {
             if let Some(source) = particles.get_mut(emitter.tracking).ok() {

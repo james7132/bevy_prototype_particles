@@ -92,7 +92,7 @@ pub struct SizeOverLifetime {
 }
 
 impl ParticleModifier for SizeOverLifetime {
-    fn apply(&self, particles: &mut Particles, delta_time: f32) {
+    fn apply(&self, particles: &mut Particles, _delta_time: f32) {
         for idx in 0..particles.len() {
             // SAFE: idx is always a valid particle index.
             unsafe {

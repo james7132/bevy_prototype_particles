@@ -1,6 +1,6 @@
 use bevy::{prelude::*, render2::camera::PerspectiveCameraBundle, PipelinedDefaultPlugins};
 use bevy_prototype_particles::*;
-use rand::Rng;
+
 use std::time::Duration;
 
 fn create_scene(mut commands: Commands) {
@@ -16,7 +16,7 @@ fn create_particles(
     mut materials: ResMut<Assets<ParticleMaterial>>,
     asset_server: Res<AssetServer>,
 ) {
-    let mut particles = Particles::new(1000);
+    let particles = Particles::new(1000);
     commands
         .spawn()
         .insert(particles)

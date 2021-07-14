@@ -7,7 +7,6 @@ use bevy::{
     prelude::*,
     render2::{
         core_pipeline::Transparent3dPhase,
-        mesh::{shape::Quad, Indices, Mesh, VertexAttributeValues},
         render_asset::RenderAssets,
         render_graph::{Node, NodeRunError, RenderGraphContext},
         render_phase::{Draw, DrawFunctions, Drawable, RenderPhase, TrackedRenderPass},
@@ -19,15 +18,14 @@ use bevy::{
     },
     utils::slab::{FrameSlabMap, FrameSlabMapKey},
 };
-use bytemuck::{Pod, Zeroable};
+use bytemuck::Pod;
 use crevice::std140::AsStd140;
 use std::{num::NonZeroU64, ops::Range};
 use wgpu::{
     BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor, BindingResource, BufferBinding,
-    BufferUsage, Face, FragmentState, FrontFace, ImageCopyTexture, ImageDataLayout,
-    MultisampleState, Origin3d, PolygonMode, PrimitiveState, PrimitiveTopology,
+    BufferUsage, FragmentState, FrontFace, ImageCopyTexture, ImageDataLayout, MultisampleState,
+    Origin3d, PolygonMode, PrimitiveState, PrimitiveTopology,
 };
-use wgpu_types::IndexFormat;
 
 pub struct ParticleShaders {
     pipeline: RenderPipeline,

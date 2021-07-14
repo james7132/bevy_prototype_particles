@@ -13,9 +13,8 @@ use modifiers::*;
 pub use particles::*;
 pub use render::*;
 
-use bevy::{
-    ecs::prelude::*,
-    render2::{core_pipeline, render_graph::RenderGraph, render_phase::DrawFunctions, RenderStage},
+use bevy::render2::{
+    core_pipeline, render_graph::RenderGraph, render_phase::DrawFunctions, RenderStage,
 };
 use render::{DrawParticle, ParticleMeta, ParticleNode, ParticleShaders};
 
