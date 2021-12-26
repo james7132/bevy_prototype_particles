@@ -22,13 +22,13 @@ pub struct ParticlePlugin;
 impl Plugin for ParticlePlugin {
     fn build(&self, app: &mut App) {
         app.add_plugin(ParticleMaterialPlugin)
-           .add_plugin(ParticleRenderPlugin)
-           .add_system(particles::update_particles.label(PARTICLE_UPDATE))
-           .add_system(emitter::emit_particles.after(PARTICLE_UPDATE))
-           .add_system(emitter::trail_particles.after(PARTICLE_UPDATE))
-           .register_particle_modifier::<ConstantForce>()
-           .register_particle_modifier::<ColorByLifetime>()
-           .register_particle_modifier::<SizeOverLifetime>();
+            .add_plugin(ParticleRenderPlugin)
+            .add_system(particles::update_particles.label(PARTICLE_UPDATE))
+            .add_system(emitter::emit_particles.after(PARTICLE_UPDATE))
+            .add_system(emitter::trail_particles.after(PARTICLE_UPDATE))
+            .register_particle_modifier::<ConstantForce>()
+            .register_particle_modifier::<ColorByLifetime>()
+            .register_particle_modifier::<SizeOverLifetime>();
     }
 }
 

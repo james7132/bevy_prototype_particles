@@ -3,20 +3,20 @@ use crate::{
     particles::Particles,
 };
 use bevy::{
-    ecs::system::SystemState,
     app::prelude::*,
-    reflect::TypeUuid,
     asset::{Assets, Handle, HandleUntyped},
+    core_pipeline::Transparent3d,
+    ecs::system::SystemState,
     ecs::{prelude::*, system::lifetimeless::*},
     math::prelude::*,
-    core_pipeline::Transparent3d,
+    reflect::TypeUuid,
     render::{
         render_asset::RenderAssets,
         render_phase::{Draw, DrawFunctions, RenderPhase, TrackedRenderPass},
         render_resource::*,
         renderer::{RenderDevice, RenderQueue},
         texture::{BevyDefault, GpuImage, Image, TextureFormatPixelInfo},
-        view::{ComputedVisibility, ViewUniform, ViewUniforms, ViewUniformOffset},
+        view::{ComputedVisibility, ViewUniform, ViewUniformOffset, ViewUniforms},
         RenderApp, RenderStage, RenderWorld,
     },
 };
@@ -25,8 +25,8 @@ use crevice::std140::AsStd140;
 use std::{collections::HashMap, num::NonZeroU64, ops::Range};
 use wgpu::{
     BindGroupDescriptor, BindGroupEntry, BindGroupLayoutDescriptor, BindingResource, BufferBinding,
-    FrontFace, ImageCopyTexture, ImageDataLayout, MultisampleState,
-    Origin3d, PolygonMode, PrimitiveState, PrimitiveTopology,
+    FrontFace, ImageCopyTexture, ImageDataLayout, MultisampleState, Origin3d, PolygonMode,
+    PrimitiveState, PrimitiveTopology,
 };
 
 pub const PARTICLE_SHADER_HANDLE: HandleUntyped =
@@ -38,9 +38,9 @@ impl Plugin for ParticleRenderPlugin {
     fn build(&self, app: &mut App) {
         let particle_shader = Shader::from_wgsl(include_str!("particle.wgsl"));
         app.world
-           .get_resource_mut::<Assets<Shader>>()
-           .unwrap()
-           .set_untracked(PARTICLE_SHADER_HANDLE, particle_shader);
+            .get_resource_mut::<Assets<Shader>>()
+            .unwrap()
+            .set_untracked(PARTICLE_SHADER_HANDLE, particle_shader);
         let render_app = app.get_sub_app(RenderApp).unwrap();
         render_app
             .add_system_to_stage(RenderStage::Extract, extract_particles)
@@ -48,10 +48,9 @@ impl Plugin for ParticleRenderPlugin {
             .add_system_to_stage(RenderStage::Queue, queue_particles)
             .init_resource::<ParticlePipeline>()
             .init_resource::<ParticleMeta>()
-            .init_resource::<ExtractedParticles>() 
-            .init_resource::<MaterialBindGroups>() 
-            .init_resource::<SpecializedPipelines<ParticlePipeline>>() 
-            ;
+            .init_resource::<ExtractedParticles>()
+            .init_resource::<MaterialBindGroups>()
+            .init_resource::<SpecializedPipelines<ParticlePipeline>>();
 
         let draw_sprite = DrawParticle::new(&mut render_app.world);
         render_app
@@ -159,7 +158,7 @@ impl FromWorld for ParticlePipeline {
                 BindGroupLayoutEntry {
                     binding: 2,
                     visibility: ShaderStages::FRAGMENT,
-                    ty: BindingType::Sampler(SamplerBindingType::Filtering), 
+                    ty: BindingType::Sampler(SamplerBindingType::Filtering),
                     count: None,
                 },
             ],
@@ -272,7 +271,7 @@ impl SpecializedPipeline for ParticlePipeline {
             layout: Some(vec![
                 self.view_layout.clone(),
                 self.particle_layout.clone(),
-                self.material_layout.clone()
+                self.material_layout.clone(),
             ]),
             multisample: MultisampleState::default(),
             primitive: PrimitiveState {
@@ -305,13 +304,11 @@ fn extract_particles(
     mut render_world: ResMut<RenderWorld>,
     materials: Res<Assets<ParticleMaterial>>,
     images: Res<Assets<Image>>,
-    query: Query<(
-        &ComputedVisibility,
-        &Particles, 
-        &Handle<ParticleMaterial>
-    )>,
+    query: Query<(&ComputedVisibility, &Particles, &Handle<ParticleMaterial>)>,
 ) {
-    let mut extracted_particles = render_world.get_resource_mut::<ExtractedParticles>().unwrap();
+    let mut extracted_particles = render_world
+        .get_resource_mut::<ExtractedParticles>()
+        .unwrap();
     extracted_particles.particles.clear();
     for (visible, particles, material_handle) in query.iter() {
         if visible.is_visible {
@@ -373,15 +370,9 @@ fn prepare_particles(
         return;
     }
 
-    particle_meta
-        .positions
-        .reserve(total_count, &render_device);
-    particle_meta
-        .sizes
-        .reserve(total_count, &render_device);
-    particle_meta
-        .colors
-        .reserve(total_count, &render_device);
+    particle_meta.positions.reserve(total_count, &render_device);
+    particle_meta.sizes.reserve(total_count, &render_device);
+    particle_meta.colors.reserve(total_count, &render_device);
 
     let mut start: u32 = 0;
     let mut end: u32 = 0;
@@ -529,15 +520,14 @@ fn queue_particles(
                 .expect("Failed to get ParticleMaterial PreparedAsset");
 
             if !material_bind_groups.values.contains_key(&batch.handle) {
-                let (base_color_texture_view, base_color_sampler) =
-                    image_handle_to_view_sampler(
-                        &particle_pipeline,
-                        &gpu_images,
-                        &gpu_material.base_color_texture,
-                    );
+                let (base_color_texture_view, base_color_sampler) = image_handle_to_view_sampler(
+                    &particle_pipeline,
+                    &gpu_images,
+                    &gpu_material.base_color_texture,
+                );
 
                 material_bind_groups.values.insert(
-                    batch.handle.clone_weak(), 
+                    batch.handle.clone_weak(),
                     render_device.create_bind_group(&BindGroupDescriptor {
                         entries: &[
                             BindGroupEntry {
@@ -555,7 +545,8 @@ fn queue_particles(
                         ],
                         label: None,
                         layout: &particle_pipeline.material_layout,
-                    }));
+                    }),
+                );
             }
 
             transparent_phase.add(Transparent3d {
@@ -564,7 +555,7 @@ fn queue_particles(
                 pipeline: pipelines.specialize(
                     &mut pipeline_cache,
                     &particle_pipeline,
-                    ParticlePipelineKey
+                    ParticlePipelineKey,
                 ),
                 entity,
                 draw_function: draw_particle_function,
@@ -599,7 +590,8 @@ impl Draw<Transparent3d> for DrawParticle {
         view: Entity,
         item: &Transparent3d,
     ) {
-        let (particle_meta, material_bind_groups, pipelines, views, batches) = self.params.get(world);
+        let (particle_meta, material_bind_groups, pipelines, views, batches) =
+            self.params.get(world);
         let view_uniform = views.get(view).unwrap();
         let material_bind_groups = material_bind_groups.into_inner();
         let particle_meta = particle_meta.into_inner();

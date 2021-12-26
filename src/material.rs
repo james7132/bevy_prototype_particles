@@ -1,10 +1,10 @@
 use bevy::{
     app::{App, Plugin},
     asset::{AddAsset, Handle},
-    reflect::TypeUuid,
     ecs::system::{lifetimeless::SRes, SystemParamItem},
+    reflect::TypeUuid,
     render::{
-        render_asset::{RenderAsset, RenderAssetPlugin, PrepareAssetError},
+        render_asset::{PrepareAssetError, RenderAsset, RenderAssetPlugin},
         render_resource::{Buffer, BufferInitDescriptor, BufferUsages},
         renderer::RenderDevice,
         texture::Image,
