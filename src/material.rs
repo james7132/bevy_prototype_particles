@@ -2,10 +2,11 @@ use bevy::{
     app::{App, Plugin},
     asset::{AddAsset, Handle},
     reflect::TypeUuid,
-    render2::{
-        render_asset::{RenderAsset, RenderAssetPlugin},
-        render_resource::{Buffer, BufferInitDescriptor, BufferUsage},
-        renderer::{RenderDevice, RenderQueue},
+    ecs::system::{lifetimeless::SRes, SystemParamItem},
+    render::{
+        render_asset::{RenderAsset, RenderAssetPlugin, PrepareAssetError},
+        render_resource::{Buffer, BufferInitDescriptor, BufferUsages},
+        renderer::RenderDevice,
         texture::Image,
     },
 };
@@ -67,6 +68,7 @@ pub struct GpuParticleMaterial {
 impl RenderAsset for ParticleMaterial {
     type ExtractedAsset = ParticleMaterial;
     type PreparedAsset = GpuParticleMaterial;
+    type Param = SRes<RenderDevice>;
 
     fn extract_asset(&self) -> Self::ExtractedAsset {
         self.clone()
@@ -74,9 +76,8 @@ impl RenderAsset for ParticleMaterial {
 
     fn prepare_asset(
         material: Self::ExtractedAsset,
-        render_device: &RenderDevice,
-        _render_queue: &RenderQueue,
-    ) -> Self::PreparedAsset {
+        render_device: &mut SystemParamItem<Self::Param>,
+    ) -> Result<Self::PreparedAsset, PrepareAssetError<Self::ExtractedAsset>> {
         let mut flags = ParticleMaterialFlags::NONE;
         if material.base_color_texture.is_some() {
             flags |= ParticleMaterialFlags::BASE_COLOR_TEXTURE;
@@ -86,12 +87,12 @@ impl RenderAsset for ParticleMaterial {
 
         let buffer = render_device.create_buffer_with_data(&BufferInitDescriptor {
             label: None,
-            usage: BufferUsage::UNIFORM | BufferUsage::COPY_DST,
+            usage: BufferUsages::UNIFORM | BufferUsages::COPY_DST,
             contents: value_std140.as_bytes(),
         });
-        GpuParticleMaterial {
+        Ok(GpuParticleMaterial {
             buffer,
             base_color_texture: material.base_color_texture,
-        }
+        })
     }
 }

@@ -11,17 +11,17 @@ use bevy::{
 };
 use std::ops::Range;
 
-pub trait ParticleModifier: Send + Sync + 'static {
+pub trait ParticleModifier: Component {
     fn apply(&self, particles: &mut Particles, delta_time: f32);
 }
 
-#[derive(Debug, Clone)]
+#[derive(Component, Debug, Clone)]
 pub struct ColorBySpeed {
     pub color: CurveFixed<Vec4>,
     pub range: Range<f32>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Component, Debug, Clone)]
 pub struct ColorByLifetime {
     pub color: CurveFixed<Vec4>,
 }
@@ -38,12 +38,12 @@ impl ParticleModifier for ColorByLifetime {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Component, Debug, Clone)]
 pub struct ForceOverLifetime {
     pub force: CurveFixed<Range<Vec3>>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Component, Debug, Clone)]
 pub struct ConstantForce {
     pub acceleration_per_second: Vec3,
 }
@@ -57,36 +57,36 @@ impl ParticleModifier for ConstantForce {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Component, Debug, Clone)]
 pub struct LifetimeByEmitterSpeed {
     pub lifetime: CurveFixed<Range<f32>>,
     pub range: Range<f32>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Component, Debug, Clone)]
 pub struct LimitVelocityOverLifetime {}
 
-#[derive(Debug, Clone)]
+#[derive(Component, Debug, Clone)]
 pub struct Noise {}
 
-#[derive(Debug, Clone)]
+#[derive(Component, Debug, Clone)]
 pub struct RotationBySpeed {
     pub curve: CurveFixed<Range<f32>>,
     pub range: Range<f32>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Component, Debug, Clone)]
 pub struct RotationOverLifetime {
     pub rotation: CurveFixed<Range<f32>>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Component, Debug, Clone)]
 pub struct SizeBySpeed {
     pub size: CurveFixed<Range<f32>>,
     pub range: Range<f32>,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Component, Debug, Clone)]
 pub struct SizeOverLifetime {
     pub size: CurveFixed<Range<f32>>,
 }
@@ -106,7 +106,7 @@ impl ParticleModifier for SizeOverLifetime {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Component, Debug, Clone)]
 pub struct VelocityOverLifetime {}
 
 pub fn apply_particle_modifier<T: ParticleModifier>(

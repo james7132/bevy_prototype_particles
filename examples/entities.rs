@@ -27,6 +27,7 @@ fn create_scene(
     });
 }
 
+#[derive(Component)]
 struct Particle {
     position: Vec4,
     velocity: Vec4,

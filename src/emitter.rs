@@ -13,6 +13,7 @@ pub trait EmitterModifier: Send + Sync + 'static {
     fn modify(&mut self, particle: &mut ParticleParams);
 }
 
+#[derive(Component)]
 pub struct ParticleEmitter {
     next_burst: Duration,
     burst_idx: usize,
@@ -182,6 +183,7 @@ pub fn emit_particles(
     );
 }
 
+#[derive(Component, Clone, Debug)]
 pub struct TrailEmitter {
     pub tracking: Entity,
     pub lifetime: f32,
@@ -192,22 +194,22 @@ pub fn trail_particles(
     trails: Query<(Entity, &TrailEmitter)>,
 ) {
     for (entity, emitter) in trails.iter() {
-        if let Some(mut destination) = particles.get_mut(entity).ok() {
-            if let Some(source) = particles.get_mut(emitter.tracking).ok() {
-                let capacity = destination.len() + source.len();
-                destination.reserve(capacity);
-                for particle in source.iter() {
-                    destination.spawn(ParticleParams {
-                        position: particle.position.xyz(),
-                        rotation: particle.position.w,
-                        size: *particle.size,
-                        velocity: Vec3::ZERO,
-                        angular_velocity: 0.0,
-                        color: Color::from(*particle.color),
-                        lifetime: emitter.lifetime,
-                    });
-                }
-            }
+        if let Ok(mut destination) = particles.get_mut(entity) {
+            let current_size = destination.len();
+            // if let Ok(source) = particles.get_unchecked(emitter.tracking) {
+            //     destination.reserve(current_size + source.len());
+            //     for particle in source.iter() {
+            //         destination.spawn(ParticleParams {
+            //             position: particle.position.xyz(),
+            //             rotation: particle.position.w,
+            //             size: *particle.size,
+            //             velocity: Vec3::ZERO,
+            //             angular_velocity: 0.0,
+            //             color: Color::from(*particle.color),
+            //             lifetime: emitter.lifetime,
+            //         });
+            //     }
+            // }
         }
     }
 }

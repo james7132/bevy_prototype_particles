@@ -1,4 +1,4 @@
-use bevy::{prelude::*, render2::camera::PerspectiveCameraBundle, PipelinedDefaultPlugins};
+use bevy::{prelude::*, render::camera::PerspectiveCameraBundle, DefaultPlugins};
 use bevy_prototype_particles::*;
 use std::time::Duration;
 
@@ -78,7 +78,7 @@ fn create_particles(
 
 fn main() {
     App::new()
-        .add_plugins(PipelinedDefaultPlugins)
+        .add_plugins(DefaultPlugins)
         .add_plugin(ParticlePlugin)
         .add_startup_system(create_scene.system())
         .add_startup_system(create_particles.system())

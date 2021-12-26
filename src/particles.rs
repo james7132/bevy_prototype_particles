@@ -30,7 +30,7 @@ pub struct ParticleMut<'a> {
     // pub lifetime: &'a mut f32,
 }
 
-#[derive(Clone)]
+#[derive(Component, Clone)]
 /// A container component for a batch of particles.
 pub struct Particles {
     pub(crate) capacity: usize,

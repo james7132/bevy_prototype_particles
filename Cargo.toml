@@ -2,24 +2,25 @@
 name = "bevy_prototype_particles"
 version = "0.1.0"
 authors = ["james7132 <contact@jamessliu.com>"]
-edition = "2018"
+edition = "2021"
 license = "MIT OR Apache-2.0"
 
 [dependencies]
 rand = { version = "0.8", features = ["small_rng"] }
-wgpu = "0.9"
-wgpu-types = "0.9"
+wgpu = "0.12"
+# wgpu-types = "0.12"
 bytemuck = { version = "1.7.0", features = ["derive"] }
 bitflags = "1.2"
 
 [profile.release]
+lto = true
 opt-level = 3
 
 [dependencies.bevy]
 git = "https://github.com/james7132/bevy"
 branch = "particles"
 default-features = false
-features = ["render", "bevy_render2"]
+features = ["render"]
 
 [dependencies.crevice]
 git = "https://github.com/james7132/bevy"
@@ -29,7 +30,7 @@ branch = "particles"
 git = "https://github.com/james7132/bevy"
 branch = "particles"
 default-features = true
-features = ["render", "bevy_render2"]
+features = ["render"]
 
 [[example]]
 name = "simple"
