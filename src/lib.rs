@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use bevy::render::primitives::Aabb;
 
 pub mod curve;
 mod emitter;
@@ -45,4 +46,14 @@ impl ParticleModifierAppExt for App {
         );
         self
     }
+}
+
+#[derive(Bundle, Default)]
+pub struct ParticleBundle {
+    pub particles: Particles,
+    pub transform: Transform,
+    pub global_transform: GlobalTransform,
+    pub aabb: Aabb,
+    pub visibility: Visibility,
+    pub computed_visibility: ComputedVisibility,
 }

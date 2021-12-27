@@ -1,4 +1,9 @@
-use bevy::{prelude::*, render::color::Color, tasks::ComputeTaskPool};
+use bevy::{
+    math::*,
+    prelude::*,
+    render::{color::Color, primitives::Aabb},
+    tasks::ComputeTaskPool,
+};
 use rand::{rngs::SmallRng, Rng, SeedableRng};
 
 #[derive(Debug, Default, Clone)]
@@ -48,6 +53,12 @@ pub struct Particles {
     pub(crate) expirations: Vec<f32>,
     // TODO(james7132): make this user initializable.
     rng: SmallRng,
+}
+
+impl Default for Particles {
+    fn default() -> Self {
+        Self::new(0)
+    }
 }
 
 impl Particles {
@@ -172,6 +183,20 @@ impl Particles {
         self.colors.clear();
         self.starts.clear();
         self.expirations.clear();
+    }
+
+    pub fn compute_aabb(&self) -> Option<Aabb> {
+        if self.len() <= 0 {
+            return None;
+        }
+
+        let mut min = Vec4::splat(f32::MAX);
+        let mut max = Vec4::splat(f32::MIN);
+        for position in self.positions.iter() {
+            min = position.min(min);
+            max = position.max(max);
+        }
+        Some(Aabb::from_min_max(min.xyz(), max.xyz()))
     }
 
     /// Gets a ratio of how much of a particle's lifetime has passed. Will be 0.0 when the

@@ -20,6 +20,13 @@ fn create_particles(
     commands
         .spawn()
         .insert(particles)
+        .insert_bundle(ParticleBundle {
+            transform: Transform {
+                translation: Vec3::from((0.0, -1.0, 0.0)),
+                ..Default::default()
+            },
+            ..Default::default()
+        })
         .insert(materials.add(ParticleMaterial {
             base_color_texture: Some(asset_server.load("icon.png")),
         }))
@@ -38,11 +45,6 @@ fn create_particles(
         .insert(modifiers::ConstantForce {
             acceleration_per_second: Vec3::from((0.0, 5.0, 0.0)),
         })
-        .insert(Transform {
-            translation: Vec3::from((0.0, -1.0, 0.0)),
-            ..Default::default()
-        })
-        .insert(GlobalTransform::default())
         .insert(
             ParticleEmitter::hemisphere(Vec3::ZERO, 1.0)
                 .add_burst(EmitterBurst {
@@ -59,6 +61,7 @@ fn create_particles(
 
 fn main() {
     App::new()
+        .insert_resource(Msaa { samples: 1 })
         .add_plugins(DefaultPlugins)
         .add_plugin(ParticlePlugin)
         .add_startup_system(create_scene.system())

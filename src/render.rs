@@ -11,14 +11,18 @@ use bevy::{
     math::prelude::*,
     reflect::TypeUuid,
     render::{
+        primitives::Aabb,
         render_asset::RenderAssets,
         render_phase::{Draw, DrawFunctions, RenderPhase, TrackedRenderPass},
         render_resource::*,
         renderer::{RenderDevice, RenderQueue},
         texture::{BevyDefault, GpuImage, Image, TextureFormatPixelInfo},
-        view::{ComputedVisibility, ViewUniform, ViewUniformOffset, ViewUniforms},
+        view::{
+            ComputedVisibility, ViewUniform, ViewUniformOffset, ViewUniforms, VisibilitySystems,
+        },
         RenderApp, RenderStage, RenderWorld,
     },
+    tasks::ComputeTaskPool,
 };
 use bytemuck::Pod;
 use crevice::std140::AsStd140;
@@ -37,6 +41,10 @@ pub struct ParticleRenderPlugin;
 impl Plugin for ParticleRenderPlugin {
     fn build(&self, app: &mut App) {
         let particle_shader = Shader::from_wgsl(include_str!("particle.wgsl"));
+        app.add_system_to_stage(
+            CoreStage::PostUpdate,
+            compute_particles_aabb.label(VisibilitySystems::CalculateBounds),
+        );
         app.world
             .get_resource_mut::<Assets<Shader>>()
             .unwrap()
@@ -52,13 +60,13 @@ impl Plugin for ParticleRenderPlugin {
             .init_resource::<MaterialBindGroups>()
             .init_resource::<SpecializedPipelines<ParticlePipeline>>();
 
-        let draw_sprite = DrawParticle::new(&mut render_app.world);
+        let draw_particle = DrawParticle::new(&mut render_app.world);
         render_app
             .world
             .get_resource::<DrawFunctions<Transparent3d>>()
             .unwrap()
             .write()
-            .add(draw_sprite);
+            .add(draw_particle);
     }
 }
 
@@ -224,7 +232,7 @@ impl SpecializedPipeline for ParticlePipeline {
 
     fn specialize(&self, _: Self::Key) -> RenderPipelineDescriptor {
         RenderPipelineDescriptor {
-            label: None,
+            label: Some("particle_render_pipeline".into()),
             vertex: VertexState {
                 shader: PARTICLE_SHADER_HANDLE.typed::<Shader>(),
                 entry_point: "vs_main".into(),
@@ -255,7 +263,7 @@ impl SpecializedPipeline for ParticlePipeline {
             depth_stencil: Some(DepthStencilState {
                 format: TextureFormat::Depth32Float,
                 depth_write_enabled: false,
-                depth_compare: CompareFunction::Less,
+                depth_compare: CompareFunction::Greater,
                 stencil: StencilState {
                     front: StencilFaceState::IGNORE,
                     back: StencilFaceState::IGNORE,
@@ -280,11 +288,22 @@ impl SpecializedPipeline for ParticlePipeline {
                 front_face: FrontFace::Ccw,
                 cull_mode: None,
                 polygon_mode: PolygonMode::Fill,
-                unclipped_depth: true,
+                unclipped_depth: false,
                 conservative: false,
             },
         }
     }
+}
+
+fn compute_particles_aabb(
+    compute_task_pool: Res<ComputeTaskPool>,
+    mut query: Query<(&mut Aabb, &Particles)>,
+) {
+    query.par_for_each_mut(&compute_task_pool, 8, |(mut aabb, particles)| {
+        if let Some(bounding_box) = particles.compute_aabb() {
+            *aabb = bounding_box;
+        }
+    });
 }
 
 struct ExtractedParticle {
@@ -311,7 +330,7 @@ fn extract_particles(
         .unwrap();
     extracted_particles.particles.clear();
     for (visible, particles, material_handle) in query.iter() {
-        if visible.is_visible {
+        if !visible.is_visible {
             continue;
         }
         if let Some(ref material) = materials.get(material_handle) {
@@ -332,7 +351,6 @@ fn extract_particles(
     }
 }
 
-#[derive(Default)]
 struct ParticleMeta {
     ranges: Vec<Range<u64>>,
     total_count: u64,
@@ -342,6 +360,21 @@ struct ParticleMeta {
     positions: BufferVec<Vec4>,
     sizes: BufferVec<f32>,
     colors: BufferVec<Vec4>,
+}
+
+impl Default for ParticleMeta {
+    fn default() -> Self {
+        ParticleMeta {
+            ranges: Vec::default(),
+            total_count: 0,
+            view_bind_group: None,
+            particle_bind_group: None,
+
+            positions: BufferVec::new(BufferUsages::STORAGE),
+            sizes: BufferVec::new(BufferUsages::STORAGE),
+            colors: BufferVec::new(BufferUsages::STORAGE),
+        }
+    }
 }
 
 fn prepare_particles(
@@ -484,7 +517,7 @@ fn queue_particles(
                     binding: 0,
                     resource: view_bindings,
                 }],
-                label: None,
+                label: Some("particle_view_bind_group".into()),
                 layout: &particle_pipeline.view_layout,
             })
         });
@@ -507,7 +540,7 @@ fn queue_particles(
                     resource: bind_buffer(&particle_meta.colors, particle_meta.total_count),
                 },
             ],
-            label: None,
+            label: Some("particle_particle_bind_group".into()),
             layout: &particle_pipeline.particle_layout,
         }));
 
@@ -543,7 +576,7 @@ fn queue_particles(
                                 resource: BindingResource::Sampler(&base_color_sampler),
                             },
                         ],
-                        label: None,
+                        label: Some("particle_material_bind_group".into()),
                         layout: &particle_pipeline.material_layout,
                     }),
                 );
@@ -551,7 +584,7 @@ fn queue_particles(
 
             transparent_phase.add(Transparent3d {
                 // TODO(james7132): properly compute this
-                distance: 0.0,
+                distance: 10.0,
                 pipeline: pipelines.specialize(
                     &mut pipeline_cache,
                     &particle_pipeline,

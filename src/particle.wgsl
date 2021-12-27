@@ -1,17 +1,15 @@
 // TODO: try merging this block with the binding?
-[[block]]
 struct View {
     view_proj: mat4x4<f32>;
     world_position: vec3<f32>;
 };
 [[group(0), binding(0)]]
-var view: View;
+var<uniform> view: View;
 
-[[block]] struct PositionBuffer { data: array<vec4<f32>>; };
-[[block]] struct SizeBuffer { data: array<f32>; };
-[[block]] struct ColorBuffer { data: array<vec4<f32>>; };
+struct PositionBuffer { data: array<vec4<f32>>; };
+struct SizeBuffer { data: array<f32>; };
+struct ColorBuffer { data: array<vec4<f32>>; };
 
-[[block]]
 struct ParticleMaterial {
   flags: u32;
 };
@@ -19,13 +17,13 @@ struct ParticleMaterial {
 let FLAGS_BASE_COLOR_TEXTURE_BIT: u32         = 1u;
 
 [[group(1), binding(0)]]
-var<storage> positions: [[access(read)]] PositionBuffer;
+var<storage, read> positions: PositionBuffer;
 [[group(1), binding(1)]]
-var<storage> sizes: [[access(read)]] SizeBuffer;
+var<storage, read> sizes: SizeBuffer;
 [[group(1), binding(2)]]
-var<storage> colors: [[access(read)]] ColorBuffer;
+var<storage, read> colors:ColorBuffer;
 [[group(2), binding(0)]]
-var material: ParticleMaterial;
+var<uniform> material: ParticleMaterial;
 [[group(2), binding(1)]]
 var base_color_texture: texture_2d<f32>;
 [[group(2), binding(2)]]
